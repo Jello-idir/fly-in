@@ -1,0 +1,15 @@
+# python artifacts
+__pycache__/
+*.py[cod]
+
+# virtual environment
+venv/
+
+# VS Code settings
+.vscode/
+
+# mypy
+.mypy_cache/
+
+# pytest
+.pytest_cache/
