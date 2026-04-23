@@ -37,6 +37,11 @@ class MapParser:
                     "pos": (int(x), int(y)),
                     "metadata": metadata
                 }
+            elif match := re.match(r"connection:\s+(\w+)-(\w+)", line):
+                connection1, connection2 = match.groups()
+                connections = connections | {
+                    connection1: connection2
+                }
 
         self.map_data = {
             "nb_drones": nb_drones,
