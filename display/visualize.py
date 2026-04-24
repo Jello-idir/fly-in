@@ -52,6 +52,7 @@ class Drone(Entity):
             (4, 2), color, cfg
             )
 
+
 class Hub(Entity):
     def __init__(
             self, mlx_ptr, name: str, shape: list[tuple[int, int]],
@@ -62,6 +63,7 @@ class Hub(Entity):
             (cell_pos[0], cell_pos[1]),
             (8, 5), color, cfg
             )
+
 
 class MlxMngr:
     def __init__(self, cfg):

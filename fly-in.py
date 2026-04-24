@@ -1,34 +1,11 @@
-# import logging
 import signal
 import sys
 import time
 from display import *
-from collections.abc import Callable
-from display import *
 from MLX.libmlx import *
 from enum import Enum
 from parsing import MapParser
-
-
-def tree(data: dict, padd: int = 0):
-    bold = "\033[1m"
-    italic = "\033[3m"
-    blue = "\033[34m"
-    green = "\033[32m"
-    reset = "\033[0m"
-
-    def _tree(data: dict, padd: int = 0):
-        for k, v in data.items():
-            if isinstance(v, dict):
-                sys.stdout.write(f"│{"―" * padd}{green} {k}:{reset}")
-                sys.stdout.write("\n")
-                _tree(v, padd + 3)
-            else:
-                sys.stdout.write(f"│{" " * padd} {k}")
-                sys.stdout.write(f": {v}\n")
-
-    print(f"{" " * 4}{bold}Map Data:{reset}\n――――――――――――――――")
-    _tree(data, padd)
+from tools import *
 
 
 # COLORS
@@ -87,17 +64,23 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal_handler)
     # ---------------------------------------
 
-
-
     # parsing
-    map = MapParser("maps/easy/03_basic_capacity.txt")
-    map.parse()
-    sys.stdout.write("\n")
-    tree(map.get_map_data())
+    filename = "Assets/test.txt"
+    try:
+        map = MapParser(filename)
+        map.parse()
+        map.validate()
+    except Exception as e:
+        sys.stderr.write(f"\033[31mError:\033[0m {e}\n")
+        sys.exit(1)
 
+    sys.stdout.write(f"\nparsing {filename.split("/")[-1]}\n\n")
+    tree(map.map_data)
+    sys.stdout.write("\n")
     #-------------------------------------
 
     sys.exit(0)
+
 
     # data and mlx window init
     cfg = init_cfg()

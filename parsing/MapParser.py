@@ -5,9 +5,15 @@ from typing import Any
 class MapParser:
     def __init__(self, file_path):
         self.file_path = file_path
-        self.map_data = {}
+        self.map_data = {
+            "nb_drones": None,
+            "hubs": {},
+            "connections": [],
+        }
 
     def parse(self) -> dict[str, Any]:
+        # open file and handle errors
+        # ----------------------------
         try:
             file = open(self.file_path, 'r')
         except FileNotFoundError:
@@ -15,40 +21,221 @@ class MapParser:
         except Exception:
             raise Exception(f"Failed to open file: {self.file_path}")
 
-        nb_drones = 0
-        hubs = {}
-        connections = {}
+        # initialization of parsing variables
+        # -----------------------------------
+
+        # defaults
+        nb_drones: int = 0
+        hubs: dict[str, Any] = {}
+        connections: list[tuple[str, str, int]] = []
+
+        # accepted stuff
+        accepted_hub_types = {
+            "start_hub", "hub", "end_hub"
+            }
+        accepted_colors = {
+            # basics
+            "none", "black", "white", "gray", "grey",
+            # reds
+            "red", "darkred", "crimson", "maroon", "scarlet", "ruby",
+            # oranges
+            "orange", "darkorange", "coral", "salmon", "peach",
+            # yellows
+            "yellow", "gold", "amber", "khaki",
+            # greens
+            "green", "darkgreen", "lime", "olive", "teal", "mint", "emerald",
+            # blues
+            "blue", "darkblue", "navy", "cyan", "skyblue", "aqua", "cobalt",
+            # purples
+            "purple", "violet", "magenta", "lavender", "indigo", "plum", "mauve",
+            # pinks
+            "pink", "hotpink", "rose", "fuchsia",
+            # browns
+            "brown", "darkbrown", "tan", "beige", "chocolate",
+            # special
+            "rainbow", "transparent",
+        }
+        accepted_zone_types = {
+            "normal", "blocked", "restricted", "priority"
+            }
+        acceptable = {
+            "hub_types": accepted_hub_types,
+            "colors": accepted_colors,
+            "zone_types": accepted_zone_types
+        }
+
+        # regex patterns for matching lines
+        m_drones = re.compile(
+            r"nb_drones\s*:\s*(\d+)\s*$")
+        m_hubs = re.compile(
+            r"""
+            (start_hub|hub|end_hub)\s*:\s*(\w+)
+            \s+(-?\d+)\s+(-?\d+)
+            (?:\s+\[([^\]]*)\])?
+            $
+            """, re.X)
+        m_connections = re.compile(
+            r"""
+            connection\s*:\s*(\w+)-(\w+)
+            (?:\s+\[\s*max_link_capacity=(\d+)\s*\])?
+            """, re.X)
+        m_metadata = re.compile(
+            r"(\w+)=(\w+)")
+
+
         for line in file:
+            # strip line from whitespace
+            line = line.strip()
+
+            # if line empty or comment skip
             if not line or line.startswith("#"):
                 continue
-            elif match := re.match(r"nb_drones:\s*(\d+)", line):
-                nb_drones = int(match.group(1))
-            elif match := re.match(
-                r"(start_hub|hub|end_hub):\s*(\w+)\s+(-?\d+)\s+(-?\d+)\s+\[([^\]]*)\]", line):
-                hub_type, hub_name, x, y, metadata_str = match.groups()
-                metadata = {
-                    "zone": "normal",
-                    "color": "none",
-                    "max_drones": "1",
-                }
-                metadata = metadata | dict(re.findall(r"(\w+)=(\w+)", metadata_str))
-                hubs[hub_name] = {
-                    "type": hub_type,
-                    "pos": (int(x), int(y)),
-                    "metadata": metadata
-                }
-            elif match := re.match(r"connection:\s+(\w+)-(\w+)", line):
-                connection1, connection2 = match.groups()
-                connections = connections | {
-                    connection1: connection2
-                }
 
-        self.map_data = {
-            "nb_drones": nb_drones,
-            "hubs": hubs,
-            "connections": connections
-        }
+            # if line is number of drones
+            elif match := m_drones.match(line):
+                try:
+                    self._handle_nb_drones(match)
+                except ValueError as e:
+                    raise ValueError(f"{e}\nline: -> {line}")
+
+            # if line is a hub
+            elif match := m_hubs.match(line):
+                try:
+                    self._handle_hub(match, acceptable)
+                except ValueError as e:
+                    raise ValueError(f"{e}\nline: -> {line}")
+
+            # if line is a connection
+            elif match := m_connections.match(line):
+                try:
+                    self._handle_connection(match)
+                except ValueError as e:
+                    raise ValueError(f"{e}\nline: -> {line}")
+
+            # if no matches found
+            else:
+                raise ValueError(f"no pattern matched.\nline: -> {line}")
+
+        # closing the file
+        file.close()
         return self.map_data
+
+    def _handle_nb_drones(self, match):
+        if not match:
+            raise ValueError("invalid number of drones format.")
+        if int(match.group(1)) <= 0:
+            raise ValueError("number of drones must be positive.")
+        if self.map_data.get("nb_drones") is not None:
+            raise ValueError("number of drones defined multiple times.")
+        self.map_data["nb_drones"] = int(match.group(1))
+
+
+    def _handle_hub(self, match, acceptable: dict[str, set[str]]):
+        if not match:
+            raise ValueError("invalid hub format.")
+        hub_type, hub_name, x, y, metadata_str = match.groups()
+
+        # check if hub already exists
+        if hub_name in self.map_data["hubs"]:
+            raise ValueError(f"duplicate hub name '{hub_name}'.")
+
+        if hub_type not in acceptable["hub_types"]:
+            raise ValueError(f"invalid hub type '{hub_type}'.")
+
+        # default metadata values
+        metadata: dict[str, str | int] = {
+            "zone": "normal",
+            "color": "none",
+            "max_drones": "1",
+        }
+        # parsing metadata
+        if metadata_str:
+            metadata_str = metadata_str.strip()
+            if not re.fullmatch(r"(\w+=\w+\s*)*", metadata_str):
+                raise ValueError("invalid metadata format.")
+
+            # converting metadata string to dict and merging with default values
+            metadata = metadata | dict(re.findall(r"(\w+)=(\w+)", metadata_str))
+
+            # validate if its all valid key and colors are valid zone is valid
+            for key, value in metadata.items():
+                if key == "color":
+                    if value not in acceptable["colors"]:
+                        raise ValueError(f"invalid color value '{value}'.")
+                elif key == "zone":
+                    if value not in acceptable["zone_types"]:
+                        raise ValueError(f"invalid zone value '{value}'.")
+                elif key == "max_drones":
+                    pass
+                else:
+                    raise ValueError(f"invalid metadata key '{key}'.")
+
+        # validating max_drones value if present
+        try:
+            metadata["max_drones"] = int(metadata["max_drones"])
+        except ValueError:
+            raise ValueError(f"invalid max_drones value ({metadata["max_drones"]}).")
+
+        self.map_data["hubs"][hub_name] = {
+            "type": hub_type,
+            "pos": (int(x), int(y)),
+            "metadata": metadata
+        }
+
+
+    def _handle_connection(self, match):
+        if not match:
+            raise ValueError("invalid connection format.")
+        a, b, cap = match.groups()
+        if cap is not None:
+            cap = int(cap)
+        else:
+            cap = 1
+        if a == b:
+            raise ValueError("self loop detected.")
+
+        # check only a and b if already in connection no matter what cap is
+        if any(
+            (a == conn[0] and b == conn[1]) or (a == conn[1] and b == conn[0])
+            for conn in self.map_data["connections"]):
+            raise ValueError("duplicate connection detected.")
+        if cap <= 0:
+            raise ValueError("capacity must be positive.")
+        self.map_data["connections"].append((a, b, cap))
+
+
+    def validate(self):
+        if not self.map_data["hubs"]:
+            raise ValueError("no hubs defined.")
+        if not self.map_data["connections"]:
+            raise ValueError("no connections defined.")
+
+        if self.map_data["nb_drones"] is None:
+            raise ValueError("number of drones not defined.")
+        # check if there is only one start and one end
+        counter = {
+            "start_hub": 0,
+            "end_hub": 0
+        }
+        for hub in self.map_data["hubs"].values():
+            if hub["type"] == "start_hub":
+                counter["start_hub"] += 1
+            elif hub["type"] == "end_hub":
+                counter["end_hub"] += 1
+        if counter["start_hub"] != 1:
+            raise ValueError(f"there must be exactly one start_hub, found {counter['start_hub']}")
+        if counter["end_hub"] != 1:
+            raise ValueError(f"there must be exactly one end_hub, found {counter['end_hub']}")
+
+
+        # check if all hubs in connections exist
+        for hub1, hub2, _ in self.map_data["connections"]:
+            if hub1 not in self.map_data["hubs"]:
+                raise ValueError(f"hub '{hub1}' in connections does not exist")
+            if hub2 not in self.map_data["hubs"]:
+                raise ValueError(f"hub '{hub2}' in connections does not exist")
+
+
 
     def get_map_data(self):
         return self.map_data
