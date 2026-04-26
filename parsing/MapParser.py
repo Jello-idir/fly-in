@@ -5,7 +5,7 @@ from typing import Any
 class MapParser:
     def __init__(self, file_path):
         self.file_path = file_path
-        self.map_data = {
+        self.data: dict[str, Any] = {
             "nb_drones": None,
             "hubs": {},
             "connections": [],
@@ -21,13 +21,6 @@ class MapParser:
         except Exception:
             raise Exception(f"Failed to open file: {self.file_path}")
 
-        # initialization of parsing variables
-        # -----------------------------------
-
-        # defaults
-        nb_drones: int = 0
-        hubs: dict[str, Any] = {}
-        connections: list[tuple[str, str, int]] = []
 
         # accepted stuff
         accepted_hub_types = {
@@ -35,25 +28,56 @@ class MapParser:
             }
         accepted_colors = {
             # basics
-            "none", "black", "white", "gray", "grey",
+            "none",
+            "black",
+            "white",
+            "gray",
+            "grey",
             # reds
-            "red", "darkred", "crimson", "maroon", "scarlet", "ruby",
+            "red",
+            "darkred",
+            "crimson",
+            "maroon",
             # oranges
-            "orange", "darkorange", "coral", "salmon", "peach",
+            "orange",
+            "darkorange",
+            "coral",
+            "salmon",
             # yellows
-            "yellow", "gold", "amber", "khaki",
+            "yellow",
+            "gold",
+            "khaki",
             # greens
-            "green", "darkgreen", "lime", "olive", "teal", "mint", "emerald",
+            "green",
+            "darkgreen",
+            "lime",
+            "olive",
+            "teal",
             # blues
-            "blue", "darkblue", "navy", "cyan", "skyblue", "aqua", "cobalt",
+            "blue",
+            "darkblue",
+            "navy",
+            "cyan",
+            "skyblue",
+            "aqua",
             # purples
-            "purple", "violet", "magenta", "lavender", "indigo", "plum", "mauve",
+            "purple",
+            "violet",
+            "magenta",
+            "lavender",
+            "indigo",
+            "plum",
             # pinks
-            "pink", "hotpink", "rose", "fuchsia",
+            "pink",
+            "hotpink",
+            "fuchsia",
             # browns
-            "brown", "darkbrown", "tan", "beige", "chocolate",
+            "brown",
+            "tan",
+            "beige",
+            "chocolate",
             # special
-            "rainbow", "transparent",
+            "rainbow"
         }
         accepted_zone_types = {
             "normal", "blocked", "restricted", "priority"
@@ -78,9 +102,8 @@ class MapParser:
             r"""
             connection\s*:\s*(\w+)-(\w+)
             (?:\s+\[\s*max_link_capacity=(\d+)\s*\])?
+            $
             """, re.X)
-        m_metadata = re.compile(
-            r"(\w+)=(\w+)")
 
 
         for line in file:
@@ -118,17 +141,16 @@ class MapParser:
 
         # closing the file
         file.close()
-        return self.map_data
+        return self.data
 
     def _handle_nb_drones(self, match):
         if not match:
             raise ValueError("invalid number of drones format.")
         if int(match.group(1)) <= 0:
             raise ValueError("number of drones must be positive.")
-        if self.map_data.get("nb_drones") is not None:
+        if self.data.get("nb_drones") is not None:
             raise ValueError("number of drones defined multiple times.")
-        self.map_data["nb_drones"] = int(match.group(1))
-
+        self.data["nb_drones"] = int(match.group(1))
 
     def _handle_hub(self, match, acceptable: dict[str, set[str]]):
         if not match:
@@ -136,7 +158,7 @@ class MapParser:
         hub_type, hub_name, x, y, metadata_str = match.groups()
 
         # check if hub already exists
-        if hub_name in self.map_data["hubs"]:
+        if hub_name in self.data["hubs"]:
             raise ValueError(f"duplicate hub name '{hub_name}'.")
 
         if hub_type not in acceptable["hub_types"]:
@@ -174,14 +196,14 @@ class MapParser:
         try:
             metadata["max_drones"] = int(metadata["max_drones"])
         except ValueError:
-            raise ValueError(f"invalid max_drones value ({metadata["max_drones"]}).")
+            raise ValueError(f"invalid max_drones value \
+                             ({metadata["max_drones"]}).")
 
-        self.map_data["hubs"][hub_name] = {
+        self.data["hubs"][hub_name] = {
             "type": hub_type,
             "pos": (int(x), int(y)),
             "metadata": metadata
         }
-
 
     def _handle_connection(self, match):
         if not match:
@@ -197,45 +219,50 @@ class MapParser:
         # check only a and b if already in connection no matter what cap is
         if any(
             (a == conn[0] and b == conn[1]) or (a == conn[1] and b == conn[0])
-            for conn in self.map_data["connections"]):
+            for conn in self.data["connections"]):
             raise ValueError("duplicate connection detected.")
         if cap <= 0:
             raise ValueError("capacity must be positive.")
-        self.map_data["connections"].append((a, b, cap))
-
+        self.data["connections"].append((a, b, cap))
 
     def validate(self):
-        if not self.map_data["hubs"]:
+        if not self.data["hubs"]:
             raise ValueError("no hubs defined.")
-        if not self.map_data["connections"]:
+        if not self.data["connections"]:
             raise ValueError("no connections defined.")
 
-        if self.map_data["nb_drones"] is None:
+        if self.data["nb_drones"] is None:
             raise ValueError("number of drones not defined.")
         # check if there is only one start and one end
         counter = {
             "start_hub": 0,
             "end_hub": 0
         }
-        for hub in self.map_data["hubs"].values():
+        for hub in self.data["hubs"].values():
             if hub["type"] == "start_hub":
                 counter["start_hub"] += 1
             elif hub["type"] == "end_hub":
                 counter["end_hub"] += 1
         if counter["start_hub"] != 1:
-            raise ValueError(f"there must be exactly one start_hub, found {counter['start_hub']}")
+            raise ValueError(f"there must be exactly one start_hub, \
+                             found {counter['start_hub']}")
         if counter["end_hub"] != 1:
-            raise ValueError(f"there must be exactly one end_hub, found {counter['end_hub']}")
-
+            raise ValueError(f"there must be exactly one end_hub, \
+                             found {counter['end_hub']}")
 
         # check if all hubs in connections exist
-        for hub1, hub2, _ in self.map_data["connections"]:
-            if hub1 not in self.map_data["hubs"]:
+        for hub1, hub2, _ in self.data["connections"]:
+            if hub1 not in self.data["hubs"]:
                 raise ValueError(f"hub '{hub1}' in connections does not exist")
-            if hub2 not in self.map_data["hubs"]:
+            if hub2 not in self.data["hubs"]:
                 raise ValueError(f"hub '{hub2}' in connections does not exist")
 
-
-
-    def get_map_data(self):
-        return self.map_data
+    def calculate(self):
+        if not self.data["hubs"]:
+            self.data["bounding_box"] = (0, 0, 0, 0)
+            return
+        min_x = min(hub["pos"][0] for hub in self.data["hubs"].values())
+        max_x = max(hub["pos"][0] for hub in self.data["hubs"].values())
+        min_y = min(hub["pos"][1] for hub in self.data["hubs"].values())
+        max_y = max(hub["pos"][1] for hub in self.data["hubs"].values())
+        self.data["bounding_box"] = (min_x, max_x, min_y, max_y)

@@ -30,7 +30,7 @@ def tree(data: Any):
     PADD = 4
 
     @singledispatch
-    def render(val: Any, padd):
+    def render(val: Any, padd: int = 0):
         stdout.write(f"{"-" * padd}{val}\n")
 
     @render.register(dict)
@@ -80,7 +80,6 @@ def tree(data: Any):
 
     @render.register(tuple)
     def _(val: tuple, padd: int = 0):
-        # remove the ['] from strings
         val = str(val).replace("'", "") # type: ignore
         stdout.write(f"{nrml}{c_tuple}{val}{rst}\n")
 
