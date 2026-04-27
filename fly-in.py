@@ -7,6 +7,7 @@ from enum import Enum
 from parsing import MapParser
 from tools import *
 from PIL import Image
+from PixelFont import load_font
 
 
 # COLORS
@@ -95,7 +96,8 @@ class SHAPE(set[tuple[int, int, int]], Enum):
     def __call__(self):
         return self.value
     #drone = load_shape_from_png("Assets/pixel_objects/drone.png")
-    hub = load_shape_from_png("Assets/pixel_objects/ball.png")
+    #hub = load_shape_from_png("Assets/pixel_objects/ball.png")
+    hub = {(i, j, 0xffffffff) for i in range(6) for j in range(6)}
 
 
 
@@ -110,8 +112,8 @@ def init_cfg(data: dict) -> dict[str, int]:
     size_x = max_x - min_x + 1
     size_y = max_y - min_y + 1
 
-    pxl = 2
-    cell = 12
+    pxl = 1
+    cell = 20
     space = 4
     padd_x = 4
     padd_y = 4
@@ -173,6 +175,11 @@ if __name__ == "__main__":
 
     # data and mlx window init
     cfg = init_cfg(map.data)
+
+    font = load_font()
+    debug(font["B"], cfg)
+    sys.exit(0)
+
     window = init_window(cfg)
     # --------------------------
 
@@ -193,7 +200,7 @@ if __name__ == "__main__":
             ),
             cfg,
             )
-        window.attach([h], display_names=False)
+        window.attach_draw([h], name_on=True, hitbox_on=True)
 
     # connection part
     for a, b, _ in map.data["connections"]:

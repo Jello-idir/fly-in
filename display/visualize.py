@@ -47,6 +47,10 @@ class Entity:
             for x in range(self.img.contents.width):
                 mlx.mlx_put_pixel(self.img, x, y, color)
 
+    @staticmethod
+    def to_coords(font, text, width, height):
+        pass
+
 
 class Drone(Entity):
     def __init__(
@@ -118,21 +122,27 @@ class MlxWindow:
         mlx.mlx_image_to_window(self.mlx_ptr, grid, 0, 0)
         self.grid = grid
 
-    def attach(self, entities: list[Entity], display_names: bool = True):
+    def attach_draw(self, entities: list[Entity],
+                    name_on: bool = False,
+                    hitbox_on: bool = False,
+                    hitbox_color: int = 0xFFFF0053,
+                    ) -> None:
         for entity in entities:
-            entity.attach(self.mlx_ptr)
+            if hitbox_on:
+                entity.fill(hitbox_color)
             entity.draw()
             if isinstance(entity, Hub):
-                if display_names and entity.name is not None:
+                if name_on and entity.name is not None:
                     mlx.mlx_put_string(
-                        self.mlx_ptr, entity.name.encode(),
-                        entity.abs_pos[0], entity.abs_pos[1] + self.cfg["pxl"] * 5,
+                        self.mlx_ptr, entity.name[:3].encode(),
+                        entity.abs_pos[0], entity.abs_pos[1] + entity.abs_size[1] + 5,
                         0xffffffff
                         )
             if isinstance(entity, Drone):
                 self.drones[entity.name] = entity
             elif isinstance(entity, Hub):
                 self.hubs[entity.name] = entity
+            entity.attach(self.mlx_ptr)
 
     def draw_line(
             self,
@@ -170,3 +180,11 @@ class MlxWindow:
         mlx.mlx_loop(self.mlx_ptr)
         mlx.mlx_terminate(self.mlx_ptr)
 
+
+def debug(points: set[tuple[int, int]], cfg: dict[str, int]) -> None:
+    window = MlxWindow(cfg)
+    img = mlx.mlx_new_image(window.mlx_ptr, cfg["width"], cfg["height"])
+    for pixel in points:
+        mlx.mlx_put_pixel(img, pixel[0], pixel[1], 0xffffffff)
+    mlx.mlx_image_to_window(window.mlx_ptr, img, 0, 0)
+    window.run()
