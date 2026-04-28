@@ -175,16 +175,64 @@ class MlxWindow:
         # connect centers of hubs
         self.draw_line(pos1, pos2, color)
 
+    def pixel_putstr(
+            self, font: dict[str, set[tuple[int, int]]],
+            text: str, pos: tuple[int, int],
+            color: int = 0xffffffff) -> None:
+
+        pixels: set[tuple[int, int]] = set()
+        x, y = pos
+        for c in text:
+            if c == "\n":
+                y += 12
+                x = pos[0]
+                continue
+            if c == "\t":
+                x += 9 * 4
+                continue
+            if c not in font:
+                x += 9
+                continue
+            pixels.update((x + px, y + py) for px, py in font[c])
+            x += 9
+        for pixel in pixels:
+            mlx.mlx_put_pixel(self.grid, pixel[0], pixel[1], color)
 
     def run(self):
         mlx.mlx_loop(self.mlx_ptr)
         mlx.mlx_terminate(self.mlx_ptr)
 
 
-def debug(points: set[tuple[int, int]], cfg: dict[str, int]) -> None:
-    window = MlxWindow(cfg)
-    img = mlx.mlx_new_image(window.mlx_ptr, cfg["width"], cfg["height"])
-    for pixel in points:
-        mlx.mlx_put_pixel(img, pixel[0], pixel[1], 0xffffffff)
-    mlx.mlx_image_to_window(window.mlx_ptr, img, 0, 0)
-    window.run()
+def fill_image(image, color: int = 0xffffffff):
+    for y in range(image.contents.height):
+        for x in range(image.contents.width):
+            mlx.mlx_put_pixel(image, x, y, color)
+
+
+def pixel_putstr(font: dict[str, set[tuple[int, int]]],
+                 text: str, pos: tuple[int, int],
+                 cfg: dict[str, int]) -> None:
+    test_window = MlxWindow(cfg)
+    test_image = mlx.mlx_new_image(test_window.mlx_ptr, cfg["width"], cfg["height"])
+    pixels: set[tuple[int, int]] = set()
+    x, y = pos
+    for c in text:
+        if c == '\n':
+            y += 12
+            x = pos[0]
+            continue
+        if c not in font:
+            x += 9
+            continue
+        if c == "\t":
+            x += 9 * 4
+            continue
+        pixels.update((x + px, y + py) for px, py in font[c])
+        x += 9
+
+    # draw hit box in image
+    fill_image(test_image, (0x3D454F << 8) + 0xff)
+    for pixel in pixels:
+        mlx.mlx_put_pixel(test_image, pixel[0], pixel[1], 0xffffffff)
+    mlx.mlx_image_to_window(test_window.mlx_ptr, test_image, 0, 0)
+    test_window.run()

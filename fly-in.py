@@ -12,7 +12,7 @@ from PixelFont import load_font
 
 # COLORS
 # ---------------------------------
-C_BG = (0x2F2F2F << 8) + 0xff
+C_BG = (0x3D454F << 8) + 0xff
 C_FG = (0xDEDEDE << 8) + 0xff
 C_GRID = (0x181818 << 8) + 0xff
 # ---------------------------------
@@ -86,8 +86,8 @@ def load_shape_from_png(path: str) -> set[tuple[int, int, int]]:
         for x in range(img.width):
             pixel = img.getpixel((x, y))  # type: ignore
             if pixel[3] > 0:  # type: ignore
-                r, g, b, a = pixel  # type: ignore
-                color = (r << 24) | (g << 16) | (b << 8) | a
+                r, _, _, _ = pixel  # type: ignore
+                color = 0xffffffff if r > 0 else 0xff000000
                 points.add((x, y, color))
     return points
 
@@ -97,7 +97,7 @@ class SHAPE(set[tuple[int, int, int]], Enum):
         return self.value
     #drone = load_shape_from_png("Assets/pixel_objects/drone.png")
     #hub = load_shape_from_png("Assets/pixel_objects/ball.png")
-    hub = {(i, j, 0xffffffff) for i in range(6) for j in range(6)}
+    hub = {(i, j, 0xffffffff) for i in range(12) for j in range(12)}
 
 
 
@@ -112,8 +112,8 @@ def init_cfg(data: dict) -> dict[str, int]:
     size_x = max_x - min_x + 1
     size_y = max_y - min_y + 1
 
-    pxl = 1
-    cell = 20
+    pxl = 3
+    cell = 8
     space = 4
     padd_x = 4
     padd_y = 4
@@ -177,15 +177,14 @@ if __name__ == "__main__":
     cfg = init_cfg(map.data)
 
     font = load_font()
-    debug(font["B"], cfg)
-    sys.exit(0)
 
     window = init_window(cfg)
     # --------------------------
 
-
     # grid mlx
     window.gridify(cfg["cell"], C_BG, C_GRID)
+
+    window.pixel_putstr(font, "FLY-IN:\n\tLOGIN: aait-idi\n\tDAYS : 11", (10, 10), COLORS["white"])
 
     # display hubs in map using manager
     for k, v in map.data["hubs"].items():
@@ -200,7 +199,7 @@ if __name__ == "__main__":
             ),
             cfg,
             )
-        window.attach_draw([h], name_on=True, hitbox_on=True)
+        window.attach_draw([h])
 
     # connection part
     for a, b, _ in map.data["connections"]:
