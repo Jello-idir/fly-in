@@ -12,9 +12,9 @@ from PixelFont import load_font
 
 # COLORS
 # ---------------------------------
-C_BG = (0x3D454F << 8) + 0xff
+C_BG = (0x303338 << 8) + 0xff
 C_FG = (0xDEDEDE << 8) + 0xff
-C_GRID = (0x181818 << 8) + 0xff
+C_GRID = (0x191A1C << 8) + 0xff
 # ---------------------------------
 BLUE   = (0x729AFF << 8) + 0xff
 GREEN  = (0x59AE6D << 8) + 0xff
@@ -43,20 +43,20 @@ COLORS: dict[str, int] = {
     "coral":       (0xFF6B6B << 8) + 0xFF,
     "salmon":      (0xFA8072 << 8) + 0xFF,
     # yellows
-    "yellow":      (0xFFFF00 << 8) + 0xFF,
+    "yellow":      (0xEFD633 << 8) + 0xFF,
     "gold":        (0xFFD700 << 8) + 0xFF,
     "khaki":       (0xC3B091 << 8) + 0xFF,
     # greens
-    "green":       (0x2DFF2D << 8) + 0xFF,
+    "green":       (0x2BB845 << 8) + 0xFF,
     "darkgreen":   (0x006400 << 8) + 0xFF,
-    "lime":        (0x00FF00 << 8) + 0xFF,
+    "lime":        (0x229E22 << 8) + 0xFF,
     "olive":       (0x808000 << 8) + 0xFF,
-    "teal":        (0x008080 << 8) + 0xFF,
+    "teal":        (0x008053 << 8) + 0xFF,
     # blues
     "blue":        (0x0000FF << 8) + 0xFF,
     "darkblue":    (0x00008B << 8) + 0xFF,
     "navy":        (0x000080 << 8) + 0xFF,
-    "cyan":        (0x00FFFF << 8) + 0xFF,
+    "cyan":        (0x05B9B9 << 8) + 0xFF,
     "skyblue":     (0x87CEEB << 8) + 0xFF,
     "aqua":        (0x00FFFF << 8) + 0xFF,
     # purples
@@ -86,8 +86,8 @@ def load_shape_from_png(path: str) -> set[tuple[int, int, int]]:
         for x in range(img.width):
             pixel = img.getpixel((x, y))  # type: ignore
             if pixel[3] > 0:  # type: ignore
-                r, _, _, _ = pixel  # type: ignore
-                color = 0xffffffff if r > 0 else 0xff000000
+                r, g, b, a = pixel  # type: ignore
+                color = (r << 24) + (g << 16) + (b << 8) + a
                 points.add((x, y, color))
     return points
 
@@ -95,11 +95,8 @@ def load_shape_from_png(path: str) -> set[tuple[int, int, int]]:
 class SHAPE(set[tuple[int, int, int]], Enum):
     def __call__(self):
         return self.value
-    #drone = load_shape_from_png("Assets/pixel_objects/drone.png")
-    #hub = load_shape_from_png("Assets/pixel_objects/ball.png")
-    hub = {(i, j, 0xffffffff) for i in range(12) for j in range(12)}
-
-
+    drone = load_shape_from_png("Assets/drone.png")
+    hub = load_shape_from_png("Assets/hub.png")
 
 
 def signal_handler(sig, frame):
@@ -112,11 +109,12 @@ def init_cfg(data: dict) -> dict[str, int]:
     size_x = max_x - min_x + 1
     size_y = max_y - min_y + 1
 
-    pxl = 3
-    cell = 8
+    pxl = 1
+    cell = 32
     space = 4
-    padd_x = 4
-    padd_y = 4
+    padd_x = 2
+    padd_y = 2
+    shadow = 0
 
     cell_w = size_x * space - space + 1 + padd_x * 2
     cell_h = size_y * space - space + 1 + padd_y * 2
@@ -138,6 +136,7 @@ def init_cfg(data: dict) -> dict[str, int]:
         "min_y": min_y * space,
         "padd_x": padd_x,
         "padd_y": padd_y,
+        "shadow": shadow,
     }
 
 
@@ -151,14 +150,13 @@ def init_window(cfg: dict[str, int]) -> MlxWindow:
     return window
 
 
-
 if __name__ == "__main__":
     # Set up signal handler for graceful exit on Ctrl+C
     signal.signal(signal.SIGINT, signal_handler)
     # ---------------------------------------
 
     # parsing
-    filename = "Assets/the_impossible_dream.txt"
+    filename = "maps/hard_03_ultimate_challenge.txt"
     try:
         map = MapParser(filename)
         map.parse()
@@ -168,23 +166,25 @@ if __name__ == "__main__":
         sys.stderr.write(f"\033[31mError:\033[0m {e}\n")
         sys.exit(1)
 
-
     #-------------------------------------
     #tree(map.data)
 
 
-    # data and mlx window init
+    # map, font and mlx window init
     cfg = init_cfg(map.data)
-
     font = load_font()
-
     window = init_window(cfg)
     # --------------------------
 
-    # grid mlx
+    # title, grid and tiling
+    tile = load_shape_from_png("Assets/ground.png")
     window.gridify(cfg["cell"], C_BG, C_GRID)
+    #window.tilify(tile)
 
-    window.pixel_putstr(font, "FLY-IN:\n\tLOGIN: aait-idi\n\tDAYS : 11", (10, 10), COLORS["white"])
+    # window.pixel_putstr(
+    #     font, "FLY-IN",
+    #     (7, 20), COLORS["white"]
+    #     )
 
     # display hubs in map using manager
     for k, v in map.data["hubs"].items():
@@ -198,13 +198,15 @@ if __name__ == "__main__":
                 y * cfg["space"] + -cfg["min_y"] + cfg["padd_y"]
             ),
             cfg,
+            color=COLORS.get(v["metadata"].get("color"), COLORS["white"]),
             )
-        window.attach_draw([h])
+        window.add_entity([h], name_on=True, hitbox_on=False)
+
 
     # connection part
     for a, b, _ in map.data["connections"]:
         window.connect(a, b, COLORS["white"])
 
     # mlx run
-    window.run()
+    window.display(with_label=False)
     # -----------
