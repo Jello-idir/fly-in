@@ -253,13 +253,6 @@ class mlx_image_t(ctypes.Structure):
         ("context", c_void_p)
     ]
 
-class mlx_instance_t(ctypes.Structure):
-    _fields_ = [
-        ("x", c_int32),
-        ("y", c_int32),
-        ("z", c_int32),
-        ("enabled", c_bool)
-    ]
 
 class mlx_t(ctypes.Structure):
     _fields_ = [
@@ -343,3 +336,9 @@ mlx.mlx_texture_to_image.argtypes = [ctypes.POINTER(mlx_t), ctypes.POINTER(mlx_t
 
 mlx.mlx_delete_texture.restype  = None
 mlx.mlx_delete_texture.argtypes = [ctypes.POINTER(mlx_texture_t)]
+
+mlx.mlx_mouse_hook.argtypes = [ctypes.POINTER(mlx_t), mlx_mousefunc, c_void_p]
+mlx.mlx_mouse_hook.restype = None
+
+mlx.mlx_cursor_hook.argtypes = [ctypes.POINTER(mlx_t), mlx_cursorfunc, c_void_p]
+mlx.mlx_cursor_hook.restype = None

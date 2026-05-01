@@ -1,14 +1,13 @@
 import signal
 import sys
-import time
-from display import *
+from Visualize import *
 from MLX.libmlx import *
 from enum import Enum
-from parsing import MapParser
-from tools import *
+from MapParser import MapData
+from MyTools import *
 from PIL import Image
 from PixelFont import load_font
-
+from Common import RenderConfig
 
 # COLORS
 # ---------------------------------
@@ -23,61 +22,6 @@ YELLOW = (0xFFFB84  << 8) + 0xff
 ORANGE = (0xFBA951  << 8) + 0xff
 # ------------------------------
 
-
-# dict color
-COLORS: dict[str, int] = {
-    # basics
-    "none":        (0x000000 << 8) + 0xFF,
-    "black":       (0x000000 << 8) + 0xFF,
-    "white":       (0xFFFFFF << 8) + 0xFF,
-    "gray":        (0x808080 << 8) + 0xFF,
-    "grey":        (0x808080 << 8) + 0xFF,
-    # reds
-    "red":         (0xFF4242 << 8) + 0xFF,
-    "darkred":     (0xB42F2F << 8) + 0xFF,
-    "crimson":     (0xFF496E << 8) + 0xFF,
-    "maroon":      (0x922424 << 8) + 0xFF,
-    # oranges
-    "orange":      (0xFF8C00 << 8) + 0xFF,
-    "darkorange":  (0xFF6600 << 8) + 0xFF,
-    "coral":       (0xFF6B6B << 8) + 0xFF,
-    "salmon":      (0xFA8072 << 8) + 0xFF,
-    # yellows
-    "yellow":      (0xEFD633 << 8) + 0xFF,
-    "gold":        (0xFFD700 << 8) + 0xFF,
-    "khaki":       (0xC3B091 << 8) + 0xFF,
-    # greens
-    "green":       (0x2BB845 << 8) + 0xFF,
-    "darkgreen":   (0x006400 << 8) + 0xFF,
-    "lime":        (0x229E22 << 8) + 0xFF,
-    "olive":       (0x808000 << 8) + 0xFF,
-    "teal":        (0x008053 << 8) + 0xFF,
-    # blues
-    "blue":        (0x0000FF << 8) + 0xFF,
-    "darkblue":    (0x00008B << 8) + 0xFF,
-    "navy":        (0x000080 << 8) + 0xFF,
-    "cyan":        (0x05B9B9 << 8) + 0xFF,
-    "skyblue":     (0x87CEEB << 8) + 0xFF,
-    "aqua":        (0x00FFFF << 8) + 0xFF,
-    # purples
-    "purple":      (0x800080 << 8) + 0xFF,
-    "violet":      (0x7F00FF << 8) + 0xFF,
-    "magenta":     (0xFF00FF << 8) + 0xFF,
-    "lavender":    (0xB57EDC << 8) + 0xFF,
-    "indigo":      (0x4B0082 << 8) + 0xFF,
-    "plum":        (0x8E4585 << 8) + 0xFF,
-    # pinks
-    "pink":        (0xFF69B4 << 8) + 0xFF,
-    "hotpink":     (0xFF1493 << 8) + 0xFF,
-    "fuchsia":     (0xFF00FF << 8) + 0xFF,
-    # browns
-    "brown":       (0x8B4513 << 8) + 0xFF,
-    "tan":         (0xD2B48C << 8) + 0xFF,
-    "beige":       (0xF5F0DC << 8) + 0xFF,
-    "chocolate":   (0xD2691E << 8) + 0xFF,
-    # special
-    "rainbow":     (0xFFFFFF << 8) + 0xFF,
-}
 
 def load_shape_from_png(path: str) -> set[tuple[int, int, int]]:
     img = Image.open(path).convert("RGBA")
@@ -103,9 +47,9 @@ def signal_handler(sig, frame):
     mlx.mlx_terminate(window.mlx_ptr)
 
 
-def init_cfg(data: dict) -> dict[str, int]:
+def _init_cfg(data: MapData) -> dict[str, int]:
 
-    min_x, max_x, min_y, max_y = data["bounding_box"]
+    min_x, max_x, min_y, max_y = data.bounding_box
     size_x = max_x - min_x + 1
     size_y = max_y - min_y + 1
 
@@ -140,7 +84,46 @@ def init_cfg(data: dict) -> dict[str, int]:
     }
 
 
-def init_window(cfg: dict[str, int]) -> MlxWindow:
+def _better_init_cfg(map: MapData) -> RenderConfig:
+    min_x, max_x, min_y, max_y = map.bounding_box
+    size_x = max_x - min_x + 1
+    size_y = max_y - min_y + 1
+
+    pxl = 1
+    cell = 32
+    space = 4
+    padd_x = 2
+    padd_y = 2
+    shadow = 0
+
+    cell_w = size_x * space - space + 1 + padd_x * 2
+    cell_h = size_y * space - space + 1 + padd_y * 2
+    width = cell_w * cell * pxl
+    height = cell_h * cell * pxl
+
+    font = load_font()
+
+    return RenderConfig(
+        width=width,
+        height=height,
+        pxl=pxl,
+        cell=cell,
+        cell_abs=cell * pxl,
+        cell_w=cell_w,
+        cell_h=cell_h,
+        mid_h=cell_h // 2,
+        mid_w=cell_w // 2,
+        space=space,
+        min_x=min_x * space,
+        min_y=min_y * space,
+        padd_x=padd_x,
+        padd_y=padd_y,
+        shadow=shadow,
+        font=font
+    )
+
+
+def init_window(cfg) -> MlxWindow:
     global window
     try:
         window = MlxWindow(cfg)
@@ -156,29 +139,25 @@ if __name__ == "__main__":
     # ---------------------------------------
 
     # parsing
-    filename = "maps/hard_03_ultimate_challenge.txt"
     try:
-        map = MapParser(filename)
-        map.parse()
-        map.validate()
-        map.calculate()
+        map = MapData.from_file("maps/the_impossible_dream.txt")
     except Exception as e:
         sys.stderr.write(f"\033[31mError:\033[0m {e}\n")
         sys.exit(1)
-
     #-------------------------------------
-    #tree(map.data)
 
 
-    # map, font and mlx window init
-    cfg = init_cfg(map.data)
-    font = load_font()
+    # config init
+    cfg = _better_init_cfg(map)
+
+
+    # mlx window init
     window = init_window(cfg)
-    # --------------------------
+
 
     # title, grid and tiling
     tile = load_shape_from_png("Assets/ground.png")
-    window.gridify(cfg["cell"], C_BG, C_GRID)
+    window.gridify(cfg.cell, C_BG, C_GRID)
     #window.tilify(tile)
 
     # window.pixel_putstr(
@@ -187,26 +166,26 @@ if __name__ == "__main__":
     #     )
 
     # display hubs in map using manager
-    for k, v in map.data["hubs"].items():
-        x, y = v["pos"]
+    for hub_name, hub in map.hubs.items():
+        x, y = hub.pos
         h = Hub(
             window.mlx_ptr,
-            k,
+            hub_name,
             SHAPE.hub,
             (
-                x * cfg["space"] + -cfg["min_x"] + cfg["padd_x"],
-                y * cfg["space"] + -cfg["min_y"] + cfg["padd_y"]
+                x * cfg.space + -cfg.min_x + cfg.padd_x,
+                y * cfg.space + -cfg.min_y + cfg.padd_y
             ),
             cfg,
-            color=COLORS.get(v["metadata"].get("color"), COLORS["white"]),
+            color=hub.metadata.color,
             )
-        window.add_entity([h], name_on=True, hitbox_on=False)
+        window.draw_add_entity(h, name_on=True, hitbox_on=False)
 
 
     # connection part
-    for a, b, _ in map.data["connections"]:
-        window.connect(a, b, COLORS["white"])
+    for conn in map.connections:
+        window.connect(conn.hub_a, conn.hub_b, 0xffffffff)
 
     # mlx run
-    window.display(with_label=False)
+    window.display(with_label=True)
     # -----------

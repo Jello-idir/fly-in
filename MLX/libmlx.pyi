@@ -171,6 +171,7 @@ class mlx_image_t(ctypes.Structure):
     instances: ctypes.Array[mlx_instance_t]
 
 class mlx_t(ctypes.Structure): ...
+
 class mlx_texture_t(ctypes.Structure):
     width: int
     height: int
@@ -178,6 +179,7 @@ class mlx_texture_t(ctypes.Structure):
     pixels: ctypes.Array[ctypes.c_uint8]
 
 class xpm_t(ctypes.Structure): ...
+
 class mlx_key_data_t(ctypes.Structure):
     key: int
     action: int
@@ -192,22 +194,60 @@ mlx_closefunc: Incomplete
 mlx_loop_hook_func: Incomplete
 
 class _MlxLib:
-    def mlx_init(self, width: int, height: int, title: bytes, resize: bool) -> ctypes.POINTER(mlx_t): ...
-    def mlx_new_image(self, mlx: ctypes.POINTER(mlx_t), width: int, height: int) -> ctypes.POINTER(mlx_image_t): ...
-    def mlx_image_to_window(self, mlx: ctypes.POINTER(mlx_t), img: ctypes.POINTER(mlx_image_t), x: int, y: int) -> int: ...
-    def mlx_put_pixel(self, img: ctypes.POINTER(mlx_image_t), x: int, y: int, color: int) -> None: ...
-    def mlx_delete_image(self, mlx: ctypes.POINTER(mlx_t), img: ctypes.POINTER(mlx_image_t)) -> None: ...
-    def mlx_loop(self, mlx: ctypes.POINTER(mlx_t)) -> None: ...
-    def mlx_loop_hook(self, mlx: ctypes.POINTER(mlx_t), fn: Incomplete, param: ctypes.c_void_p) -> None: ...
-    def mlx_key_hook(self, mlx: ctypes.POINTER(mlx_t), fn: Incomplete, param: ctypes.c_void_p | None) -> None: ...
-    def mlx_close_window(self, mlx: ctypes.POINTER(mlx_t)) -> None: ...
-    def mlx_terminate(self, mlx: ctypes.POINTER(mlx_t)) -> None: ...
-    def mlx_is_key_down(self, mlx: ctypes.POINTER(mlx_t), key: int) -> bool: ...
-    def mlx_load_png(self, path: bytes) -> ctypes.POINTER(mlx_texture_t): ...
-    def mlx_texture_to_image(self, mlx: ctypes.POINTER(mlx_t), texture: ctypes.POINTER(mlx_texture_t)) -> ctypes.POINTER(mlx_image_t): ...
-    def mlx_delete_texture(self, texture: ctypes.POINTER(mlx_texture_t)) -> None: ...
-    def mlx_set_setting(self, setting: Incomplete, value: bool) -> None: ...
+    def mlx_init(
+        self, width: int, height: int, title: bytes, resize: bool
+    ) -> ctypes.POINTER(mlx_t): ...  # type: ignore
+    def mlx_new_image(
+        self, mlx: ctypes.POINTER(mlx_t), width: int, height: int  # type: ignore
+    ) -> ctypes.POINTER(mlx_image_t): ...  # type: ignore
+    def mlx_image_to_window(
+        self, mlx: ctypes.POINTER(mlx_t), img: ctypes.POINTER(mlx_image_t), x: int, y: int  # type: ignore
+    ) -> int: ...  # type: ignore
+    def mlx_put_pixel(
+        self, img: ctypes.POINTER(mlx_image_t), x: int, y: int, color: int  # type: ignore
+    ) -> None: ...  # type: ignore
+    def mlx_delete_image(
+        self, mlx: ctypes.POINTER(mlx_t), img: ctypes.POINTER(mlx_image_t)  # type: ignore
+    ) -> None: ...  # type: ignore
+    def mlx_loop(
+        self, mlx: ctypes.POINTER(mlx_t)  # type: ignore
+    ) -> None: ...  # type: ignore
+    def mlx_loop_hook(
+        self, mlx: ctypes.POINTER(mlx_t), fn: Incomplete, param: ctypes.c_void_p  # type: ignore
+    ) -> None: ...  # type: ignore
+    def mlx_key_hook(
+        self, mlx: ctypes.POINTER(mlx_t), fn: Incomplete, param: ctypes.c_void_p | None  # type: ignore
+    ) -> None: ...  # type: ignore
+    def mlx_close_window(
+        self, mlx: ctypes.POINTER(mlx_t)  # type: ignore
+    ) -> None: ...  # type: ignore
+    def mlx_terminate(
+        self, mlx: ctypes.POINTER(mlx_t)  # type: ignore
+    ) -> None: ...  # type: ignore
+    def mlx_is_key_down(
+        self, mlx: ctypes.POINTER(mlx_t), key: int  # type: ignore
+    ) -> bool: ...  # type: ignore
+    def mlx_load_png(
+        self, path: bytes
+    ) -> ctypes.POINTER(mlx_texture_t): ...  # type: ignore
+    def mlx_texture_to_image(
+        self, mlx: ctypes.POINTER(mlx_t), texture: ctypes.POINTER(mlx_texture_t)  # type: ignore
+    ) -> ctypes.POINTER(mlx_image_t): ...  # type: ignore
+    def mlx_delete_texture(
+        self, texture: ctypes.POINTER(mlx_texture_t)  # type: ignore
+    ) -> None: ...  # type: ignore
+    def mlx_set_setting(
+        self, setting: Incomplete, value: bool
+    ) -> None: ...  # type: ignore
     def mlx_get_time(self) -> float: ...
-    def mlx_put_string(self, mlx: ctypes.POINTER(mlx_t), str: bytes, x: int, y: int, z: int) -> ctypes.POINTER(mlx_image_t): ...
+    def mlx_put_string(
+        self, mlx: ctypes.POINTER(mlx_t), str: bytes, x: int, y: int, z: int  # type: ignore
+    ) -> ctypes.POINTER(mlx_image_t): ...  # type: ignore
+    def mlx_mouse_hook(
+        self, mlx: ctypes.POINTER(mlx_t), fn: mlx_mousefunc, param: ctypes.c_void_p | None  # type: ignore
+    ) -> None: ...  # type: ignore
+    def mlx_cursor_hook(
+        self, mlx: ctypes.POINTER(mlx_t), fn: mlx_cursorfunc, param: ctypes.c_void_p | None  # type: ignore
+    ) -> None: ...  # type: ignore
 
 mlx: _MlxLib

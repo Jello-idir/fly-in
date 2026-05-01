@@ -1,6 +1,6 @@
 PYTHON = python3
 PIP = pip3
-MAIN_SCRIPT = main.py
+MAIN_SCRIPT = fly-in.py
 
 .PHONY: install run debug clean
 
