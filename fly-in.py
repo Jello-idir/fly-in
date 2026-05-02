@@ -47,53 +47,16 @@ def signal_handler(sig, frame):
     mlx.mlx_terminate(window.mlx_ptr)
 
 
-def _init_cfg(data: MapData) -> dict[str, int]:
-
-    min_x, max_x, min_y, max_y = data.bounding_box
-    size_x = max_x - min_x + 1
-    size_y = max_y - min_y + 1
-
-    pxl = 1
-    cell = 32
-    space = 4
-    padd_x = 2
-    padd_y = 2
-    shadow = 0
-
-    cell_w = size_x * space - space + 1 + padd_x * 2
-    cell_h = size_y * space - space + 1 + padd_y * 2
-    width = cell_w * cell * pxl
-    height = cell_h * cell * pxl
-
-    return {
-        "width": width,
-        "height": height,
-        "pxl": pxl,
-        "cell": cell,
-        "cell_abs": cell * pxl,
-        "cell_w": cell_w,
-        "cell_h": cell_h,
-        "mid_h": cell_h // 2,
-        "mid_w": cell_w // 2,
-        "space": space,
-        "min_x": min_x * space,
-        "min_y": min_y * space,
-        "padd_x": padd_x,
-        "padd_y": padd_y,
-        "shadow": shadow,
-    }
-
-
-def _better_init_cfg(map: MapData) -> RenderConfig:
+def _init_cfg(map: MapData) -> RenderConfig:
     min_x, max_x, min_y, max_y = map.bounding_box
     size_x = max_x - min_x + 1
     size_y = max_y - min_y + 1
 
     pxl = 1
     cell = 32
-    space = 4
-    padd_x = 2
-    padd_y = 2
+    space = 5
+    padd_x = space // 2 + 1
+    padd_y = space // 2 + 1
     shadow = 0
 
     cell_w = size_x * space - space + 1 + padd_x * 2
@@ -148,7 +111,7 @@ if __name__ == "__main__":
 
 
     # config init
-    cfg = _better_init_cfg(map)
+    cfg = _init_cfg(map)
 
 
     # mlx window init
@@ -179,7 +142,22 @@ if __name__ == "__main__":
             cfg,
             color=hub.metadata.color,
             )
-        window.draw_add_entity(h, name_on=True, hitbox_on=False)
+        window.draw_add_entity(h, hitbox_on=False)
+
+    for drone in map.drones:
+        x, y = drone.pos
+        d = Drone(
+            window.mlx_ptr,
+            str(drone.id),
+            SHAPE.drone,
+            (
+                x * cfg.space + -cfg.min_x + cfg.padd_x,
+                y * cfg.space + -cfg.min_y + cfg.padd_y
+            ),
+            cfg,
+            color=drone.color
+        )
+        window.draw_add_entity(d, hitbox_on=False)
 
 
     # connection part

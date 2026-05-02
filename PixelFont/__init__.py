@@ -1,3 +1,3 @@
-from .PixelFont import load_font
+from .PixelFont import load_font, Glyph
 
-__all__ = ["load_font"]
+__all__ = ["load_font", "Glyph"]

@@ -1,105 +1,15 @@
 import re
 from typing import Any
 from pydantic import BaseModel, Field, computed_field, model_validator
-from enum import Enum
-
-
-class ColorType(int, Enum):
-    # basics
-    none = (0x3D3D3D << 8) + 0xFF
-    black = (0x000000 << 8) + 0xFF
-    white = (0xFFFFFF << 8) + 0xFF
-    gray = (0x808080 << 8) + 0xFF
-    grey = (0x808080 << 8) + 0xFF
-    # reds
-    red = (0xFF4242 << 8) + 0xFF
-    darkred = (0xB42F2F << 8) + 0xFF
-    crimson = (0xFF496E << 8) + 0xFF
-    maroon = (0x922424 << 8) + 0xFF
-    # oranges
-    orange = (0xFF8C00 << 8) + 0xFF
-    darkorange = (0xFF6600 << 8) + 0xFF
-    coral = (0xFF6B6B << 8) + 0xFF
-    salmon = (0xFA8072 << 8) + 0xFF
-    # yellows
-    yellow = (0xEFD633 << 8) + 0xFF
-    gold = (0xFFD700 << 8) + 0xFF
-    khaki = (0xC3B091 << 8) + 0xFF
-    # greens
-    green = (0x2BB845 << 8) + 0xFF
-    darkgreen = (0x006400 << 8) + 0xFF
-    lime = (0x229E22 << 8) + 0xFF
-    olive = (0x808000 << 8) + 0xFF
-    teal = (0x008053 << 8) + 0xFF
-    # blues
-    blue = (0x0000FF << 8) + 0xFF
-    darkblue = (0x00008B << 8) + 0xFF
-    navy = (0x000080 << 8) + 0xFF
-    cyan = (0x05B9B9 << 8) + 0xFF
-    skyblue = (0x87CEEB << 8) + 0xFF
-    aqua = (0x00FFFF << 8) + 0xFF
-    # purples
-    purple = (0x800080 << 8) + 0xFF
-    violet = (0x7F00FF << 8) + 0xFF
-    magenta = (0xFF00FF << 8) + 0xFF
-    lavender = (0xB57EDC << 8) + 0xFF
-    indigo = (0x4B0082 << 8) + 0xFF
-    plum = (0x8E4585 << 8) + 0xFF
-    # pinks
-    pink = (0xFF69B4 << 8) + 0xFF
-    hotpink = (0xFF1493 << 8) + 0xFF
-    fuchsia = (0xFF00FF << 8) + 0xFF
-    # browns
-    brown = (0x8B4513 << 8) + 0xFF
-    tan = (0xD2B48C << 8) + 0xFF
-    beige = (0xF5F0DC << 8) + 0xFF
-    chocolate = (0xD2691E << 8) + 0xFF
-    # special
-    rainbow = (0xFFFFFF << 8) + 0xFF
-
-
-class ZoneType(str, Enum):
-    normal = "normal"
-    blocked = "blocked"
-    restricted = "restricted"
-    priority = "priority"
-
-
-class HubType(str, Enum):
-    start_hub = "start_hub"
-    hub = "hub"
-    end_hub = "end_hub"
-
-
-class HubMetadata(BaseModel):
-    zone: ZoneType = ZoneType.normal
-    color: ColorType = ColorType.none
-    max_drones: int = Field(default=1, gt=0)
-
-
-class Hub(BaseModel):
-    name: str
-    type: HubType
-    pos: tuple[int, int]
-    metadata: HubMetadata = HubMetadata()
-
-
-class Connection(BaseModel):
-    hub_a: str
-    hub_b: str
-    capacity: int = Field(default=1, gt=0)
-
-    @model_validator(mode="after")
-    def no_self_loop(self):
-        if self.hub_a == self.hub_b:
-            raise ValueError("self loop detected.")
-        return self
+from Common import HubType, ColorType, ZoneType
+from Common import Drone, Hub, Connection, HubMetadata
 
 
 class MapData(BaseModel):
     nb_drones: int = Field(gt=0)
     hubs: dict[str, Hub]
     connections: list[Connection]
+    drones: list[Drone]
 
     @computed_field
     @property
@@ -142,7 +52,6 @@ class MapData(BaseModel):
         nb_drones: int | None = None
         hubs: dict[str, Hub] = {}
         connections: list[Connection] = []
-
 
         def _handle_nb_drones(match: re.Match) -> None:
             nonlocal nb_drones
@@ -194,6 +103,7 @@ class MapData(BaseModel):
                     type=HubType(hub_type),
                     pos=(int(x), int(y)),
                     metadata=metadata,
+                    drones=[],
                 )
             except Exception as e:
                 raise ValueError(f"invalid hub data.\n\
@@ -260,8 +170,16 @@ class MapData(BaseModel):
                 else:
                     raise ValueError(f"no pattern matched.\nline: -> '{line}'")
 
+        try:
+            start_hub_pos = next(
+                hub for hub in hubs.values() if hub.type == HubType.start_hub
+                ).pos
+        except StopIteration:
+            raise ValueError("no start_hub defined.")
+
         return MapData(
             nb_drones=nb_drones,  # type: ignore
             hubs=hubs,
             connections=connections,
+            drones=[Drone(id=i, pos=start_hub_pos) for i in range(1, nb_drones + 1)],  # type: ignore
         )

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-
+from PixelFont import Glyph
 
 @dataclass
 class RenderConfig:
@@ -18,4 +18,4 @@ class RenderConfig:
     padd_x: int
     padd_y: int
     shadow: int
-    font: dict[str, set[tuple[int, int]]]
+    font: dict[str, Glyph]
