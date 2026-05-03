@@ -9,6 +9,7 @@ from PIL import Image
 from PixelFont import load_font
 from Common import RenderConfig
 
+
 # COLORS
 # ---------------------------------
 C_BG = (0x303338 << 8) + 0xff

@@ -33,6 +33,3 @@ class Connection(BaseModel):
         if self.hub_a == self.hub_b:
             raise ValueError("self loop detected.")
         return self
-
-
-
