@@ -5,7 +5,6 @@ from PixelFont import Glyph
 class RenderConfig:
     width: int
     height: int
-    pxl: int
     cell: int
     cell_abs: int
     cell_w: int
@@ -17,5 +16,6 @@ class RenderConfig:
     min_y: int
     padd_x: int
     padd_y: int
-    shadow: int
     font: dict[str, Glyph]
+    drone_shape: set[tuple[int, int, int]]
+    hub_shape: set[tuple[int, int, int]]

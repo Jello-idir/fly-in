@@ -5,7 +5,7 @@ from typing import Any
 
 class Drone(BaseModel):
     id: int
-    pos: tuple[int, int]
+    coord: tuple[int, int]
     color: ColorType = ColorType.white
 
 

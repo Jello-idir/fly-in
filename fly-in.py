@@ -52,27 +52,24 @@ def _init_cfg(map: MapData) -> RenderConfig:
     min_x, max_x, min_y, max_y = map.bounding_box
     size_x = max_x - min_x + 1
     size_y = max_y - min_y + 1
+    cell = 64
+    space = 1
+    padd_x = 2
+    padd_y = 2
 
-    pxl = 1
-    cell = 32
-    space = 5
-    padd_x = space // 2 + 1
-    padd_y = space // 2 + 1
-    shadow = 0
-
+    space = space + 1
     cell_w = size_x * space - space + 1 + padd_x * 2
     cell_h = size_y * space - space + 1 + padd_y * 2
-    width = cell_w * cell * pxl
-    height = cell_h * cell * pxl
+    width = cell_w * cell
+    height = cell_h * cell
 
     font = load_font()
 
     return RenderConfig(
         width=width,
         height=height,
-        pxl=pxl,
         cell=cell,
-        cell_abs=cell * pxl,
+        cell_abs=cell,
         cell_w=cell_w,
         cell_h=cell_h,
         mid_h=cell_h // 2,
@@ -82,19 +79,11 @@ def _init_cfg(map: MapData) -> RenderConfig:
         min_y=min_y * space,
         padd_x=padd_x,
         padd_y=padd_y,
-        shadow=shadow,
-        font=font
+        font=font,
+        drone_shape=SHAPE.drone(),
+        hub_shape=SHAPE.hub(),
     )
 
-
-def init_window(cfg) -> MlxWindow:
-    global window
-    try:
-        window = MlxWindow(cfg)
-    except Exception as e:
-        sys.stderr.write(f"Error: {e}\n")
-        sys.exit(1)
-    return window
 
 
 if __name__ == "__main__":
@@ -104,67 +93,30 @@ if __name__ == "__main__":
 
     # parsing
     try:
-        map = MapData.from_file("maps/the_impossible_dream.txt")
+        map = MapData.from_file("maps/hard_03_ultimate_challenge.txt")
     except Exception as e:
         sys.stderr.write(f"\033[31mError:\033[0m {e}\n")
         sys.exit(1)
     #-------------------------------------
 
-
     # config init
     cfg = _init_cfg(map)
 
-
     # mlx window init
-    window = init_window(cfg)
-
+    try:
+        window = MlxWindow.from_map(map, cfg)
+    except Exception as e:
+        sys.stderr.write(f"Error: {e}\n")
+        sys.exit(1)
 
     # title, grid and tiling
     tile = load_shape_from_png("Assets/ground.png")
-    window.gridify(cfg.cell, C_BG, C_GRID)
-    #window.tilify(tile)
-
-    # window.pixel_putstr(
-    #     font, "FLY-IN",
-    #     (7, 20), COLORS["white"]
-    #     )
+    #window.gridify(cfg.cell, C_BG, C_GRID)
+    window.tilify(tile)
 
     # display hubs in map using manager
-    for hub_name, hub in map.hubs.items():
-        x, y = hub.pos
-        h = Hub(
-            window.mlx_ptr,
-            hub_name,
-            SHAPE.hub,
-            (
-                x * cfg.space + -cfg.min_x + cfg.padd_x,
-                y * cfg.space + -cfg.min_y + cfg.padd_y
-            ),
-            cfg,
-            color=hub.metadata.color,
-            )
-        window.draw_add_entity(h, hitbox_on=False)
 
-    for drone in map.drones:
-        x, y = drone.pos
-        d = Drone(
-            window.mlx_ptr,
-            str(drone.id),
-            SHAPE.drone,
-            (
-                x * cfg.space + -cfg.min_x + cfg.padd_x,
-                y * cfg.space + -cfg.min_y + cfg.padd_y
-            ),
-            cfg,
-            color=drone.color
-        )
-        window.draw_add_entity(d, hitbox_on=False)
-
-
-    # connection part
-    for conn in map.connections:
-        window.connect(conn.hub_a, conn.hub_b, 0xffffffff)
-
+    window._connect_hubs(map)
     # mlx run
     window.display(with_label=True)
     # -----------

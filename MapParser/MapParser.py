@@ -9,7 +9,7 @@ class MapData(BaseModel):
     nb_drones: int = Field(gt=0)
     hubs: dict[str, Hub]
     connections: list[Connection]
-    drones: list[Drone]
+    drones: dict[int, Drone]
 
     @computed_field
     @property
@@ -181,5 +181,8 @@ class MapData(BaseModel):
             nb_drones=nb_drones,  # type: ignore
             hubs=hubs,
             connections=connections,
-            drones=[Drone(id=i, pos=start_hub_pos) for i in range(1, nb_drones + 1)],  # type: ignore
+            drones={
+                i: Drone(id=i, coord=start_hub_pos)
+                for i in range(1, nb_drones + 1)  # type: ignore
+            }
         )

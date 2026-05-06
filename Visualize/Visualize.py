@@ -1,179 +1,73 @@
 from MLX.libmlx import *
-from Common import RenderConfig
-from PixelFont import Glyph
 from typing import Any
-import sys
-
+from Common import *
+from MapParser import MapData
+import queue
+import ctypes
 
 class Entity:
-    def __init__(
-        self,
-        mlx_ptr,
-        name: str,
-        shape: set[tuple[int, int, int]],
-        cell_pos: tuple[int, int],
-        px_size: tuple[int, int],
-        cfg: RenderConfig,
-        color: int = 0xFFFFFFFF,
-        align: bool = True,
+    def __init__(self, mlx_ptr, cfg: RenderConfig,
+        coord: tuple[int, int],
+        color: int,
+        shape: set[tuple[int, int, int]]
     ):
-        self.name = name
         self.color = color
-        self.cfg = cfg
-        self.px_size = px_size
-        self.abs_size = (px_size[0] * self.cfg.pxl, px_size[1] * self.cfg.pxl)
-        self.cell_pos = cell_pos
-        self.px_pos = (cell_pos[0] * self.cfg.cell, cell_pos[1] * self.cfg.cell)
-        self.abs_pos = (self.px_pos[0] * self.cfg.pxl, self.px_pos[1] * self.cfg.pxl)
-        if align:
-            self.abs_pos = (
-                self.abs_pos[0] + self.cfg.cell_abs // 2 - self.abs_size[0] // 2,
-                self.abs_pos[1] + self.cfg.cell_abs // 2 - self.abs_size[1] // 2,
-            )
-
-        self.shape_pos = (
-            self.abs_pos[0] + self.abs_size[0] // 2,
-            self.abs_pos[1] + self.abs_size[1] // 2,
-        )
         self.shape = shape
+        self.coord = coord
+        self.size = (
+            max(x[0] for x in shape) + 1,
+            max(y[1] for y in shape) + 1
+        )
+        self.pos = (
+            (coord[0] * cfg.space - cfg.min_x + cfg.padd_x) * cfg.cell,
+            (coord[1] * cfg.space - cfg.min_y + cfg.padd_y) * cfg.cell
+            )
         self.img = mlx.mlx_new_image(
             mlx_ptr,
-            self.abs_size[0],
-            self.abs_size[1],
+            self.size[0],
+            self.size[1],
         )
-        self.img_name = self.create_placeholder_image(mlx_ptr, cfg.font, name.upper())
-        self.fill(img=self.img_name, color=(0x000000 << 8) + 0x20)
-        self.put_pixel_string(cfg.font, name.upper())
+        self.img_name = None
 
-    def create_placeholder_image(
-        self,
-        mlx_ptr,
-        font: dict[str, Glyph],
-        strin: str,
-    ) -> Any:
-        width = 0
-        height = 12
-        for c in strin:
-            if c == "\n":
-                height += 12
-                continue
-            if c == "\t":
-                width += 24
-                continue
-            if c not in font:
-                width += 8
-                continue
-            width += font[c].width
 
-        return mlx.mlx_new_image(mlx_ptr, width, height)
-
-    def draw(self):
-        # drawing the shape
-        for pixel in self.shape:
-            for j in range(pixel[1] * self.cfg.pxl, (pixel[1] + 1) * self.cfg.pxl):
-                for i in range(pixel[0] * self.cfg.pxl, (pixel[0] + 1) * self.cfg.pxl):
-                    r = (pixel[2] >> 24) & 0xFF
-                    g = (pixel[2] >> 16) & 0xFF
-                    b = (pixel[2] >> 8) & 0xFF
-                    if r == g and g == b:
-                        mlx.mlx_put_pixel(self.img, i, j, pixel[2])
-                    else:
-                        mlx.mlx_put_pixel(self.img, i, j, self.color)
-
-    def fill(self, img=None, color: int = 0xFFFFFFFF):
-        if img is None:
-            img = self.img
-        for y in range(img.contents.height):
-            for x in range(img.contents.width):
-                mlx.mlx_put_pixel(img, x, y, color)
-
-    def put_pixel_string(
-        self, font: dict[str, Glyph], strin: str, pos: tuple[int, int] = (0, 0)
+class MlxDrone(Entity):
+    def __init__(
+            self,
+            mlx_ptr,
+            cfg: RenderConfig,
+            drone_model: Drone
     ) -> None:
-
-        pixels: set[tuple[int, int, int]] = set()
-        x, y = pos
-        for c in strin:
-            if c == "\n":
-                y += 12
-                x = pos[0]
-                continue
-            if c == "\t":
-                x += 24
-                continue
-            if c not in font:
-                x += 8
-                continue
-            new_pixels = set((px + x, py + y, c) for px, py, c in font[c].pixels)
-            pixels.update(new_pixels)
-            x += font[c].width
-
-        # drawing pixels
-        for pixel in pixels:
-            mlx.mlx_put_pixel(self.img_name, pixel[0], pixel[1], pixel[2])
-
-
-class Drone(Entity):
-    def __init__(
-        self,
-        mlx_ptr,
-        name: str,
-        shape: set[tuple[int, int, int]],
-        cell_pos: tuple[int, int],
-        cfg: RenderConfig,
-        color: int = 0xFFFFFFFF,
-        align: bool = True,
-    ):
-
-        # calculate shape size
-        min_x = min(x[0] for x in shape)
-        max_x = max(x[0] for x in shape)
-        min_y = min(y[1] for y in shape)
-        max_y = max(y[1] for y in shape)
-        size_x = max_x - min_x + 1
-        size_y = max_y - min_y + 1
-
-        # adjusting offset
-        shape = set((x - min_x, y - min_y, c) for x, y, c in shape)
-
+        self.id: int = drone_model.id
         super().__init__(
-            mlx_ptr, name, shape, cell_pos, (size_x, size_y), cfg, color, align
+            mlx_ptr, cfg,
+            drone_model.coord,
+            drone_model.color,
+            cfg.drone_shape
         )
 
 
-class Hub(Entity):
+class MlxHub(Entity):
     def __init__(
-        self,
-        mlx_ptr,
-        name: str,
-        shape: set[tuple[int, int, int]],
-        cell_pos: tuple[int, int],
-        cfg: RenderConfig,
-        color: int = 0xFFFFFFFF,
-        align: bool = True,
-    ):
-
-        # calculate shape size
-        min_x = min(x[0] for x in shape)
-        max_x = max(x[0] for x in shape)
-        min_y = min(y[1] for y in shape)
-        max_y = max(y[1] for y in shape)
-        size_x = max_x - min_x + 1
-        size_y = max_y - min_y + 1
-
-        # adjusting offset
-        shape = set((x - min_x, y - min_y, c) for x, y, c in shape)
-
+            self,
+            mlx_ptr,
+            cfg: RenderConfig,
+            hub_model: Hub,
+    ) -> None:
+        self.name: str = hub_model.name
+        self.data = hub_model
         super().__init__(
-            mlx_ptr, name, shape, cell_pos, (size_x, size_y), cfg, color, align
+            mlx_ptr, cfg,
+            hub_model.pos,
+            hub_model.metadata.color,
+            cfg.hub_shape
         )
 
 
 class MlxWindow:
     def __init__(self, cfg):
         self.mlx_ptr = mlx.mlx_init(cfg.width, cfg.height, b"Fly-in", True)
-        self.hubs: dict[str, Hub] = {}
-        self.drones: dict[str, Drone] = {}
+        self.hubs: dict[str, MlxHub] = {}
+        self.drones: dict[int, MlxDrone] = {}
         self.cfg: RenderConfig = cfg
         self.img_grid = mlx.mlx_new_image(self.mlx_ptr, self.cfg.width, self.cfg.height)
         self.img_tile = mlx.mlx_new_image(self.mlx_ptr, self.cfg.width, self.cfg.height)
@@ -181,8 +75,16 @@ class MlxWindow:
             self.mlx_ptr, self.cfg.width, self.cfg.height
         )
 
+    @classmethod
+    def from_map(cls, map: MapData, cfg: RenderConfig):
+        window = cls(cfg)
+        for hub in map.hubs.values():
+            window._add_entity(hub)
+        for drone in map.drones.values():
+            window._add_entity(drone)
+        return window
+
     def gridify(self, step, bg_color, lines_color):
-        step = step * self.cfg.pxl
         for y in range(0, self.cfg.height, step):
             for x in range(0, self.cfg.width, step):
                 for j in range(y, y + step):
@@ -207,154 +109,200 @@ class MlxWindow:
                         )
         self.img_tile = img_tile
 
-    def draw_add_entity(
-        self,
-        entity: Entity,
-        hitbox_on: bool = False,
-        hitbox_color: int = 0xFFFF0053,
-    ) -> None:
-        if hitbox_on:
-            entity.fill(hitbox_color)
-        entity.draw()
-        if isinstance(entity, Drone):
-            self.drones[entity.name] = entity
-        elif isinstance(entity, Hub):
-            self.hubs[entity.name] = entity
-
-    def draw_line(
-        self, pos1: tuple[int, int], pos2: tuple[int, int], color: int = 0xFFFFFFFF
-    ) -> None:
-        x1, y1 = pos1
-        x2, y2 = pos2
-        dx = x2 - x1
-        dy = y2 - y1
-        step = max(abs(dx), abs(dy))
-        if step == 0:
-            mlx.mlx_put_pixel(self.img_lines, x1, y1, color)
-            return
-        stepx = dx / step
-        stepy = dy / step
-        for i in range(step + 1):
-            mlx.mlx_put_pixel(
-                self.img_lines, int(x1 + i * stepx), int(y1 + i * stepy), color
+    def _add_entity(self, obj: Drone | Hub) -> None:
+        if isinstance(obj, Drone):
+            self.drones[obj.id] = MlxDrone(
+                self.mlx_ptr,
+                self.cfg,
+                obj
+            )
+        elif isinstance(obj, Hub):
+            self.hubs[obj.name] = MlxHub(
+                self.mlx_ptr,
+                self.cfg,
+                obj
             )
 
-    def connect(self, hub1: str, hub2: str, color: int = 0xFFFFFFFF):
-        # look for hubs in self.hubs
-        if hub1 not in self.hubs:
-            raise ValueError(f"hub '{hub1}' not found.")
-        if hub2 not in self.hubs:
-            raise ValueError(f"hub '{hub2}' not found.")
+    def _draw_entity(self, entity: Entity):
+        for pixel in entity.shape:
+            for j in range(pixel[1], (pixel[1] + 1)):
+                for i in range(pixel[0], (pixel[0] + 1)):
+                    r = (pixel[2] >> 24) & 0xFF
+                    g = (pixel[2] >> 16) & 0xFF
+                    b = (pixel[2] >> 8) & 0xFF
+                    if r == g and g == b:
+                        mlx.mlx_put_pixel(entity.img, i, j, pixel[2])
+                    else:
+                        mlx.mlx_put_pixel(entity.img, i, j, entity.color)
 
-        pos1 = self.hubs[hub1].shape_pos
-        pos2 = self.hubs[hub2].shape_pos
+    def _disable_entity(self, entity: Entity):
+        entity.img.contents.enabled = False
 
-        # connect centers of hubs
-        self.draw_line(pos1, pos2, color)
+    def _enable_entity(self, entity: Entity):
+        entity.img.contents.enabled = True
 
-    def pixel_putstr(
-        self,
-        font: dict[str, set[tuple[int, int]]],
-        text: str,
-        pos: tuple[int, int],
-        color: int = 0xFFFFFFFF,
-    ) -> None:
+    def _delete_entity_image(self, entity: Entity):
+        mlx.mlx_delete_image(self.mlx_ptr, entity.img)
 
-        pixels: set[tuple[int, int]] = set()
-        x, y = pos
-        for c in text:
-            if c == "\n":
-                y += 12
-                x = pos[0]
-                continue
-            if c == "\t":
-                x += 9 * 3
-                continue
-            if c not in font:
-                x += 9
-                continue
-            pixels.update((x + px, y + py) for px, py in font[c])
-            x += 9
-        for pixel in pixels:
-            mlx.mlx_put_pixel(self.img_grid, pixel[0], pixel[1], color)
+    def _draw_entities(self):
+        for entity in [*self.hubs.values(), *self.drones.values()]:
+            for pixel in entity.shape:
+                for j in range(pixel[1], (pixel[1] + 1)):
+                    for i in range(pixel[0], (pixel[0] + 1)):
+                        r = (pixel[2] >> 24) & 0xFF
+                        g = (pixel[2] >> 16) & 0xFF
+                        b = (pixel[2] >> 8) & 0xFF
+                        if r == g and g == b:
+                            mlx.mlx_put_pixel(entity.img, i, j, pixel[2])
+                        else:
+                            mlx.mlx_put_pixel(entity.img, i, j, entity.color)
 
-    def display(self, with_label=False):
+    def _attach_entity(self, entity: Entity):
+        mlx.mlx_image_to_window(
+            self.mlx_ptr, entity.img, entity.pos[0], entity.pos[1]
+        )
+
+    def _attach_entities(self):
+        for entity in [*self.hubs.values(), *self.drones.values()]:
+            mlx.mlx_image_to_window(
+                self.mlx_ptr, entity.img, entity.pos[0], entity.pos[1]
+            )
+
+    def _draw_entities_names(self, upper: bool = False) -> None:
+        for entity in [*self.hubs.values(), *self.drones.values()]:
+            name = entity.name if isinstance(entity, MlxHub) else f"D-{entity.id}"
+            if upper:
+                name = name.upper()
+            # calculate size of name image
+            width = sum(self.cfg.font[c].width for c in name)
+            height = 12
+
+            # create name image
+            entity.img_name = mlx.mlx_new_image(self.mlx_ptr, width, height)
+            pixels: set[tuple[int, int, int]] = set()
+            x, y = 0, 0
+
+            # create pixels
+            for c in name:
+                new_pixels = set((px + x, py + y, c) for px, py, c in self.cfg.font[c].pixels)
+                pixels.update(new_pixels)
+                x += self.cfg.font[c].width
+
+            # drawe pixels
+            for pixel in pixels:
+                if isinstance(entity, MlxHub):
+                    mlx.mlx_put_pixel(entity.img_name, pixel[0], pixel[1], pixel[2])
+
+            # attach self
+            mlx.mlx_image_to_window(
+                self.mlx_ptr, entity.img_name, entity.pos[0], entity.pos[1] - 12
+                )
+
+    def _delete_entity_name(self, entity: Entity):
+        if entity.img_name:
+            mlx.mlx_delete_image(self.mlx_ptr, entity.img_name)
+            entity.img_name = None
+
+    def _enable_entity_name(self, entity: Entity):
+        if entity.img_name:
+            entity.img_name.contents.enabled = True
+
+    def _disable_entity_name(self, entity: Entity):
+        if entity.img_name:
+            entity.img_name.contents.enabled = False
+
+    def _connect_hubs(self, map: MapData, color: int = 0xFFFFFFFF):
+        def _draw_line(
+            pos1: tuple[int, int],
+            pos2: tuple[int, int],
+            color: int = 0xFFFFFFFF
+            ) -> None:
+
+            x1, y1 = pos1
+            x2, y2 = pos2
+            dx = x2 - x1
+            dy = y2 - y1
+            step = max(abs(dx), abs(dy))
+            if step == 0:
+                mlx.mlx_put_pixel(self.img_lines, x1, y1, color)
+                return
+            stepx = dx / step
+            stepy = dy / step
+            for i in range(step + 1):
+                mlx.mlx_put_pixel(
+                    self.img_lines, int(x1 + i * stepx), int(y1 + i * stepy), color
+                )
+
+        for conn in map.connections:
+            hub_a = self.hubs[conn.hub_a]
+            hub_b = self.hubs[conn.hub_b]
+
+            hub1_pos = (
+                hub_b.pos[0] + hub_b.size[0] // 2,
+                hub_b.pos[1] + hub_b.size[1] // 2
+            )
+            hub2_pos = (
+                hub_a.pos[0] + hub_a.size[0] // 2,
+                hub_a.pos[1] + hub_a.size[1] // 2
+            )
+            _draw_line(hub1_pos, hub2_pos, color)
+
+    def testin(self, param):
+        key = input("Enter command (format: move <drone_id> <x> <y>): ")
+        parts = key.split()
+        if parts[0] in ("move", "disable", "enable"):
+            try:
+                if parts[0] == "disable":
+                    drone_id = int(parts[1])
+                    self._disable_entity(self.drones[drone_id])
+                elif parts[0] == "enable":
+                    drone_id = int(parts[1])
+                    self._enable_entity(self.drones[drone_id])
+                elif parts[0] == "move" and len(parts) == 4:
+                    drone_id = int(parts[1])
+                    x = int(parts[2])
+                    y = int(parts[3])
+                    if drone_id in self.drones:
+                        self._move_entity(self.drones[drone_id], (x, y))
+            except Exception:
+                print("Invalid command format. Please enter: move <drone_id> <x> <y>")
+        else:
+            print("Invalid command format. Please enter: move <drone_id> <x> <y>")
+
+    def _move_entity(self, drone: Entity, new_coord: tuple[int, int]):
+        drone.coord = new_coord
+        drone.pos = (
+            (new_coord[0] * self.cfg.space - self.cfg.min_x + self.cfg.padd_x) * self.cfg.cell,
+            (new_coord[1] * self.cfg.space - self.cfg.min_y + self.cfg.padd_y) * self.cfg.cell
+        )
+        drone.img.contents.instances.contents.x = drone.pos[0]
+        drone.img.contents.instances.contents.y = drone.pos[1]
+
+    def display_and_hook(self, with_label=False):
         # attach all images to mlx then run
         mlx.mlx_image_to_window(self.mlx_ptr, self.img_grid, 0, 0)
         mlx.mlx_image_to_window(self.mlx_ptr, self.img_tile, 0, 0)
         mlx.mlx_image_to_window(self.mlx_ptr, self.img_lines, 0, 0)
 
-        # attach entities
-        for entity in self.hubs.values():
-            mlx.mlx_image_to_window(
-                self.mlx_ptr, entity.img, entity.abs_pos[0], entity.abs_pos[1]
-            )
+        self._draw_entities()
+        self._attach_entities()
         if with_label:
-            for entity in self.hubs.values():
-                mlx.mlx_image_to_window(
-                    self.mlx_ptr,
-                    entity.img_name,
-                    entity.abs_pos[0],
-                    entity.abs_pos[1] - entity.img_name.contents.height - 4,
-                )
-        for entity in self.drones.values():
-            mlx.mlx_image_to_window(
-                self.mlx_ptr, entity.img, entity.abs_pos[0], entity.abs_pos[1]
-            )
+            self._draw_entities_names()
 
-        pan = {"dragging": False,
-               "last_x": 0,
-               "last_y": 0,
-               "off_x": 0,
-               "off_y": 0
-               }
+        self.a = ctypes.CFUNCTYPE(None, ctypes.c_void_p)(self.testin)
 
-        def _apply_pan():
-            for img in [self.img_grid, self.img_tile, self.img_lines]:
-                img.contents.instances[0].x = pan["off_x"]
-                img.contents.instances[0].y = pan["off_y"]
-            for entity in self.hubs.values():
-                entity.img.contents.instances[0].x = entity.abs_pos[0] + pan["off_x"]
-                entity.img.contents.instances[0].y = entity.abs_pos[1] + pan["off_y"]
-                if with_label:
-                    entity.img_name.contents.instances[0].x = (
-                        entity.abs_pos[0] + pan["off_x"]
-                    )
-                    entity.img_name.contents.instances[0].y = (
-                        entity.abs_pos[1]
-                        - entity.img_name.contents.height
-                        - 4
-                        + pan["off_y"]
-                    )
+        mlx.mlx_loop_hook(self.mlx_ptr, self.a, None)  # type: ignore
+        mlx.mlx_loop(self.mlx_ptr)
+        mlx.mlx_terminate(self.mlx_ptr)
 
-        def _mouse_cb(button, action, mods, param):
-            if button == MLX_MOUSE_BUTTON_LEFT:
-                pan["dragging"] = action == MLX_PRESS
+    def display(self, with_label=False):
+        mlx.mlx_image_to_window(self.mlx_ptr, self.img_grid, 0, 0)
+        mlx.mlx_image_to_window(self.mlx_ptr, self.img_tile, 0, 0)
+        mlx.mlx_image_to_window(self.mlx_ptr, self.img_lines, 0, 0)
 
-        def _cursor_cb(x, y, param):
-            x, y = int(x), int(y)
-            if pan["dragging"]:
-                dx = x - pan["last_x"]
-                dy = y - pan["last_y"]
-
-                # clamp so image can't leave window bounds
-                pan["off_x"] = max(
-                    -(self.cfg.width - self.mlx_ptr.contents.width),
-                    min(0, pan["off_x"] + dx),
-                )
-                pan["off_y"] = max(
-                    -(self.cfg.height - self.mlx_ptr.contents.height),
-                    min(0, pan["off_y"] + dy),
-                )
-                _apply_pan()
-            pan["last_x"] = x
-            pan["last_y"] = y
-
-        mouse_cb = mlx_mousefunc(_mouse_cb)
-        cursor_cb = mlx_cursorfunc(_cursor_cb)
-
-        mlx.mlx_mouse_hook(self.mlx_ptr, mouse_cb, None)
-        mlx.mlx_cursor_hook(self.mlx_ptr, cursor_cb, None)
-
+        self._draw_entities()
+        self._attach_entities()
+        if with_label:
+            self._draw_entities_names(upper=True)
         mlx.mlx_loop(self.mlx_ptr)
         mlx.mlx_terminate(self.mlx_ptr)
