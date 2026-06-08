@@ -2,8 +2,7 @@ from MLX.libmlx import *
 from typing import Any
 from Common import *
 from MapParser import MapData
-import queue
-import ctypes
+
 
 class Entity:
     def __init__(self, mlx_ptr, cfg: RenderConfig,
@@ -64,36 +63,27 @@ class MlxHub(Entity):
 
 
 class MlxWindow:
-    def __init__(self, cfg):
+    def __init__(self, mapdata: MapData, cfg: RenderConfig):
+        self.map = mapdata
         self.mlx_ptr = mlx.mlx_init(cfg.width, cfg.height, b"Fly-in", True)
         self.hubs: dict[str, MlxHub] = {}
         self.drones: dict[int, MlxDrone] = {}
         self.cfg: RenderConfig = cfg
-        self.img_grid = mlx.mlx_new_image(self.mlx_ptr, self.cfg.width, self.cfg.height)
-        self.img_tile = mlx.mlx_new_image(self.mlx_ptr, self.cfg.width, self.cfg.height)
+        self.img_tile = mlx.mlx_new_image(
+            self.mlx_ptr, self.cfg.width, self.cfg.height)
         self.img_lines = mlx.mlx_new_image(
             self.mlx_ptr, self.cfg.width, self.cfg.height
         )
 
     @classmethod
-    def from_map(cls, map: MapData, cfg: RenderConfig):
-        window = cls(cfg)
-        for hub in map.hubs.values():
+    def from_map(cls, mapdata: MapData, cfg: RenderConfig):
+        window = cls(mapdata, cfg)
+        for hub in mapdata.hubs.values():
             window._add_entity(hub)
-        for drone in map.drones.values():
+        for drone in mapdata.drones.values():
             window._add_entity(drone)
         return window
 
-    def gridify(self, step, bg_color, lines_color):
-        for y in range(0, self.cfg.height, step):
-            for x in range(0, self.cfg.width, step):
-                for j in range(y, y + step):
-                    for i in range(x, x + step):
-                        mlx.mlx_put_pixel(self.img_grid, i, j, bg_color)
-                for j in range(y, y + step):
-                    mlx.mlx_put_pixel(self.img_grid, x, j, lines_color)
-                for i in range(x, x + step):
-                    mlx.mlx_put_pixel(self.img_grid, i, y, lines_color)
 
     def tilify(self, shape: set[tuple[int, int, int]]):
         img_tile = mlx.mlx_new_image(self.mlx_ptr, self.cfg.width, self.cfg.height)
@@ -211,7 +201,8 @@ class MlxWindow:
         if entity.img_name:
             entity.img_name.contents.enabled = False
 
-    def _connect_hubs(self, map: MapData, color: int = 0xFFFFFFFF):
+    def _draw_lines(self, color: int = 0xFFFFFFFF):
+
         def _draw_line(
             pos1: tuple[int, int],
             pos2: tuple[int, int],
@@ -233,7 +224,7 @@ class MlxWindow:
                     self.img_lines, int(x1 + i * stepx), int(y1 + i * stepy), color
                 )
 
-        for conn in map.connections:
+        for conn in self.map.connections:
             hub_a = self.hubs[conn.hub_a]
             hub_b = self.hubs[conn.hub_b]
 
@@ -247,62 +238,19 @@ class MlxWindow:
             )
             _draw_line(hub1_pos, hub2_pos, color)
 
-    def testin(self, param):
-        key = input("Enter command (format: move <drone_id> <x> <y>): ")
-        parts = key.split()
-        if parts[0] in ("move", "disable", "enable"):
-            try:
-                if parts[0] == "disable":
-                    drone_id = int(parts[1])
-                    self._disable_entity(self.drones[drone_id])
-                elif parts[0] == "enable":
-                    drone_id = int(parts[1])
-                    self._enable_entity(self.drones[drone_id])
-                elif parts[0] == "move" and len(parts) == 4:
-                    drone_id = int(parts[1])
-                    x = int(parts[2])
-                    y = int(parts[3])
-                    if drone_id in self.drones:
-                        self._move_entity(self.drones[drone_id], (x, y))
-            except Exception:
-                print("Invalid command format. Please enter: move <drone_id> <x> <y>")
-        else:
-            print("Invalid command format. Please enter: move <drone_id> <x> <y>")
-
-    def _move_entity(self, drone: Entity, new_coord: tuple[int, int]):
-        drone.coord = new_coord
-        drone.pos = (
-            (new_coord[0] * self.cfg.space - self.cfg.min_x + self.cfg.padd_x) * self.cfg.cell,
-            (new_coord[1] * self.cfg.space - self.cfg.min_y + self.cfg.padd_y) * self.cfg.cell
-        )
-        drone.img.contents.instances.contents.x = drone.pos[0]
-        drone.img.contents.instances.contents.y = drone.pos[1]
-
-    def display_and_hook(self, with_label=False):
-        # attach all images to mlx then run
-        mlx.mlx_image_to_window(self.mlx_ptr, self.img_grid, 0, 0)
-        mlx.mlx_image_to_window(self.mlx_ptr, self.img_tile, 0, 0)
-        mlx.mlx_image_to_window(self.mlx_ptr, self.img_lines, 0, 0)
-
-        self._draw_entities()
-        self._attach_entities()
-        if with_label:
-            self._draw_entities_names()
-
-        self.a = ctypes.CFUNCTYPE(None, ctypes.c_void_p)(self.testin)
-
-        mlx.mlx_loop_hook(self.mlx_ptr, self.a, None)  # type: ignore
-        mlx.mlx_loop(self.mlx_ptr)
-        mlx.mlx_terminate(self.mlx_ptr)
-
     def display(self, with_label=False):
-        mlx.mlx_image_to_window(self.mlx_ptr, self.img_grid, 0, 0)
+
         mlx.mlx_image_to_window(self.mlx_ptr, self.img_tile, 0, 0)
-        mlx.mlx_image_to_window(self.mlx_ptr, self.img_lines, 0, 0)
+        mlx.mlx_image_to_window(self.mlx_ptr, self.img_lines, 0 , 0)
 
         self._draw_entities()
         self._attach_entities()
+        self._draw_lines()
+
         if with_label:
             self._draw_entities_names(upper=True)
+
+
+
         mlx.mlx_loop(self.mlx_ptr)
         mlx.mlx_terminate(self.mlx_ptr)

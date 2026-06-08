@@ -4,7 +4,7 @@ from Visualize import *
 from MLX.libmlx import *
 from enum import Enum
 from MapParser import MapData
-from MyTools import *
+from Tools import *
 from PIL import Image
 from PixelFont import load_font
 from Common import RenderConfig
@@ -14,7 +14,6 @@ from Common import RenderConfig
 # ---------------------------------
 C_BG = (0x303338 << 8) + 0xff
 C_FG = (0xDEDEDE << 8) + 0xff
-C_GRID = (0x191A1C << 8) + 0xff
 # ---------------------------------
 BLUE   = (0x729AFF << 8) + 0xff
 GREEN  = (0x59AE6D << 8) + 0xff
@@ -48,8 +47,8 @@ def signal_handler(sig, frame):
     mlx.mlx_terminate(window.mlx_ptr)
 
 
-def _init_cfg(map: MapData) -> RenderConfig:
-    min_x, max_x, min_y, max_y = map.bounding_box
+def _init_cfg(mapdata: MapData) -> RenderConfig:
+    min_x, max_x, min_y, max_y = mapdata.bounding_box
     size_x = max_x - min_x + 1
     size_y = max_y - min_y + 1
     cell = 64
@@ -93,30 +92,28 @@ if __name__ == "__main__":
 
     # parsing
     try:
-        map = MapData.from_file("maps/hard_03_ultimate_challenge.txt")
+        mapdata = MapData.from_file("maps/hard_03_ultimate_challenge.txt")
+        mapdata = MapData.from_file("maps/test.txt")
     except Exception as e:
         sys.stderr.write(f"\033[31mError:\033[0m {e}\n")
         sys.exit(1)
     #-------------------------------------
 
     # config init
-    cfg = _init_cfg(map)
+    cfg = _init_cfg(mapdata)
 
     # mlx window init
     try:
-        window = MlxWindow.from_map(map, cfg)
+        window = MlxWindow.from_map(mapdata, cfg)
     except Exception as e:
         sys.stderr.write(f"Error: {e}\n")
         sys.exit(1)
 
     # title, grid and tiling
     tile = load_shape_from_png("Assets/ground.png")
-    #window.gridify(cfg.cell, C_BG, C_GRID)
     window.tilify(tile)
 
-    # display hubs in map using manager
 
-    window._connect_hubs(map)
     # mlx run
     window.display(with_label=True)
     # -----------
