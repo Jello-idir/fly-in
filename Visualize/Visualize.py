@@ -26,7 +26,7 @@ class Entity:
             self.size[0],
             self.size[1],
         )
-        self.img_name = None
+        self.name_img = None
 
 
 class MlxDrone(Entity):
@@ -54,6 +54,7 @@ class MlxHub(Entity):
     ) -> None:
         self.name: str = hub_model.name
         self.data = hub_model
+        self.drones: list[MlxDrone] = []
         super().__init__(
             mlx_ptr, cfg,
             hub_model.pos,
@@ -67,7 +68,6 @@ class MlxWindow:
         self.map = mapdata
         self.mlx_ptr = mlx.mlx_init(cfg.width, cfg.height, b"Fly-in", True)
         self.hubs: dict[str, MlxHub] = {}
-        self.drones: dict[int, MlxDrone] = {}
         self.cfg: RenderConfig = cfg
         self.img_tile = mlx.mlx_new_image(
             self.mlx_ptr, self.cfg.width, self.cfg.height)
@@ -79,9 +79,18 @@ class MlxWindow:
     def from_map(cls, mapdata: MapData, cfg: RenderConfig):
         window = cls(mapdata, cfg)
         for hub in mapdata.hubs.values():
-            window._add_entity(hub)
+            window._add_hub(hub)
+
+        # finding the first hub
+        start_hub = next(
+            hub for hub in mapdata.hubs.values()
+            if hub.type == HubType.start_hub
+            )
         for drone in mapdata.drones.values():
-            window._add_entity(drone)
+            drone_entity = MlxDrone(window.mlx_ptr, window.cfg, drone)
+            window.hubs[start_hub.name].drones.append(drone_entity)
+
+
         return window
 
 
@@ -99,14 +108,8 @@ class MlxWindow:
                         )
         self.img_tile = img_tile
 
-    def _add_entity(self, obj: Drone | Hub) -> None:
-        if isinstance(obj, Drone):
-            self.drones[obj.id] = MlxDrone(
-                self.mlx_ptr,
-                self.cfg,
-                obj
-            )
-        elif isinstance(obj, Hub):
+    def _add_hub(self, obj: Hub) -> None:
+        if isinstance(obj, Hub):
             self.hubs[obj.name] = MlxHub(
                 self.mlx_ptr,
                 self.cfg,
@@ -135,7 +138,7 @@ class MlxWindow:
         mlx.mlx_delete_image(self.mlx_ptr, entity.img)
 
     def _draw_entities(self):
-        for entity in [*self.hubs.values(), *self.drones.values()]:
+        for entity in self.hubs.values():
             for pixel in entity.shape:
                 for j in range(pixel[1], (pixel[1] + 1)):
                     for i in range(pixel[0], (pixel[0] + 1)):
@@ -153,13 +156,13 @@ class MlxWindow:
         )
 
     def _attach_entities(self):
-        for entity in [*self.hubs.values(), *self.drones.values()]:
+        for entity in self.hubs.values():
             mlx.mlx_image_to_window(
                 self.mlx_ptr, entity.img, entity.pos[0], entity.pos[1]
             )
 
     def _draw_entities_names(self, upper: bool = False) -> None:
-        for entity in [*self.hubs.values(), *self.drones.values()]:
+        for entity in self.hubs.values():
             name = entity.name if isinstance(entity, MlxHub) else f"D-{entity.id}"
             if upper:
                 name = name.upper()
@@ -168,7 +171,7 @@ class MlxWindow:
             height = 12
 
             # create name image
-            entity.img_name = mlx.mlx_new_image(self.mlx_ptr, width, height)
+            entity.name_img = mlx.mlx_new_image(self.mlx_ptr, width, height)
             pixels: set[tuple[int, int, int]] = set()
             x, y = 0, 0
 
@@ -181,25 +184,25 @@ class MlxWindow:
             # drawe pixels
             for pixel in pixels:
                 if isinstance(entity, MlxHub):
-                    mlx.mlx_put_pixel(entity.img_name, pixel[0], pixel[1], pixel[2])
+                    mlx.mlx_put_pixel(entity.name_img, pixel[0], pixel[1], pixel[2])
 
             # attach self
             mlx.mlx_image_to_window(
-                self.mlx_ptr, entity.img_name, entity.pos[0], entity.pos[1] - 12
+                self.mlx_ptr, entity.name_img, entity.pos[0], entity.pos[1] - 12
                 )
 
     def _delete_entity_name(self, entity: Entity):
-        if entity.img_name:
-            mlx.mlx_delete_image(self.mlx_ptr, entity.img_name)
-            entity.img_name = None
+        if entity.name_img:
+            mlx.mlx_delete_image(self.mlx_ptr, entity.name_img)
+            entity.name_img = None
 
     def _enable_entity_name(self, entity: Entity):
-        if entity.img_name:
-            entity.img_name.contents.enabled = True
+        if entity.name_img:
+            entity.name_img.contents.enabled = True
 
     def _disable_entity_name(self, entity: Entity):
-        if entity.img_name:
-            entity.img_name.contents.enabled = False
+        if entity.name_img:
+            entity.name_img.contents.enabled = False
 
     def _draw_lines(self, color: int = 0xFFFFFFFF):
 
@@ -254,3 +257,4 @@ class MlxWindow:
 
         mlx.mlx_loop(self.mlx_ptr)
         mlx.mlx_terminate(self.mlx_ptr)
+
