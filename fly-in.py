@@ -12,14 +12,11 @@ from Common import RenderConfig
 
 # COLORS
 # ---------------------------------
-C_BG = (0x303338 << 8) + 0xff
-C_FG = (0xDEDEDE << 8) + 0xff
-# ---------------------------------
-BLUE   = (0x729AFF << 8) + 0xff
-GREEN  = (0x59AE6D << 8) + 0xff
-RED    = (0xFE8282 << 8) + 0xff
-YELLOW = (0xFFFB84  << 8) + 0xff
-ORANGE = (0xFBA951  << 8) + 0xff
+BLUE   = 0x729AFF << 8 | 0xff
+GREEN  = 0x59AE6D << 8 | 0xff
+RED    = 0xFE8282 << 8 | 0xff
+YELLOW = 0xFFFB84  << 8 | 0xff
+ORANGE = 0xFBA951  << 8 | 0xff
 # ------------------------------
 
 
@@ -51,8 +48,8 @@ def _init_cfg(mapdata: MapData) -> RenderConfig:
     min_x, max_x, min_y, max_y = mapdata.bounding_box
     size_x = max_x - min_x + 1
     size_y = max_y - min_y + 1
-    cell = 64
-    space = 1
+    cell = 40
+    space = 3
     padd_x = 2
     padd_y = 2
 
@@ -92,8 +89,7 @@ if __name__ == "__main__":
 
     # parsing
     try:
-        mapdata = MapData.from_file("maps/hard_03_ultimate_challenge.txt")
-        mapdata = MapData.from_file("maps/test.txt")
+        mapdata = MapData.from_file("maps/tst.txt")
     except Exception as e:
         sys.stderr.write(f"\033[31mError:\033[0m {e}\n")
         sys.exit(1)
@@ -113,7 +109,8 @@ if __name__ == "__main__":
     tile = load_shape_from_png("Assets/ground.png")
     window.tilify(tile)
 
-
     # mlx run
-    window.display(with_label=True)
+    solution = open("solution.txt").read()
+    window.run(solution)
+    #window.display(with_name=True, with_stats=True)
     # -----------

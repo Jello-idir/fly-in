@@ -1,7 +1,13 @@
 from MLX.libmlx import *
-from typing import Any
 from Common import *
 from MapParser import MapData
+import ctypes
+import time
+
+def fill_image(img, color: int):
+    for y in range(img.contents.height):
+        for x in range(img.contents.width):
+            mlx.mlx_put_pixel(img, x, y, color)
 
 
 class Entity:
@@ -26,6 +32,7 @@ class Entity:
             self.size[0],
             self.size[1],
         )
+        self.stats_img = None
         self.name_img = None
 
 
@@ -37,10 +44,11 @@ class MlxDrone(Entity):
             drone_model: Drone
     ) -> None:
         self.id: int = drone_model.id
+        color = list(ColorType)[(self.id % 7) * 4]
         super().__init__(
             mlx_ptr, cfg,
             drone_model.coord,
-            drone_model.color,
+            color,
             cfg.drone_shape
         )
 
@@ -69,9 +77,12 @@ class MlxWindow:
         self.mlx_ptr = mlx.mlx_init(cfg.width, cfg.height, b"Fly-in", True)
         self.hubs: dict[str, MlxHub] = {}
         self.cfg: RenderConfig = cfg
+        self._turns = []
+        self._move_index = 0
+        self._last_time = 0
         self.img_tile = mlx.mlx_new_image(
             self.mlx_ptr, self.cfg.width, self.cfg.height)
-        self.img_lines = mlx.mlx_new_image(
+        self.img_bg = mlx.mlx_new_image(
             self.mlx_ptr, self.cfg.width, self.cfg.height
         )
 
@@ -89,10 +100,7 @@ class MlxWindow:
         for drone in mapdata.drones.values():
             drone_entity = MlxDrone(window.mlx_ptr, window.cfg, drone)
             window.hubs[start_hub.name].drones.append(drone_entity)
-
-
         return window
-
 
     def tilify(self, shape: set[tuple[int, int, int]]):
         img_tile = mlx.mlx_new_image(self.mlx_ptr, self.cfg.width, self.cfg.height)
@@ -107,6 +115,26 @@ class MlxWindow:
                             img_tile, x + pixel[0], y + pixel[1], pixel[2]
                         )
         self.img_tile = img_tile
+
+    def _write_text(self, img, text: str, pos: tuple[int, int], with_shadow: bool = True):
+        init_x, init_y = pos
+        x, y = init_x, init_y
+
+        for c in text:
+            if c == '\n':
+                y += 10
+                x = init_x
+                continue
+            for px, py, col in self.cfg.font[c].pixels:
+                mlx.mlx_put_pixel(
+                    img, x + px, y + py, col
+                )
+                if with_shadow:
+                    shadow_col = 0x000000ff
+                    mlx.mlx_put_pixel(
+                        img, x + px + 1, y + py + 1, shadow_col
+                    )
+            x += self.cfg.font[c].width
 
     def _add_hub(self, obj: Hub) -> None:
         if isinstance(obj, Hub):
@@ -128,133 +156,141 @@ class MlxWindow:
                     else:
                         mlx.mlx_put_pixel(entity.img, i, j, entity.color)
 
-    def _disable_entity(self, entity: Entity):
-        entity.img.contents.enabled = False
+    def _draw_hub_drones(self, hub: MlxHub):
+        for idx, drone in enumerate(hub.drones):
+            if idx >= 12:
+                break
+            offset_x = (idx % 3) * 16 + 10
+            offset_y = (idx // 3) * 11 + 10
+            self._attach_entity(drone, (hub.pos[0] + offset_x, hub.pos[1] + offset_y))
 
-    def _enable_entity(self, entity: Entity):
-        entity.img.contents.enabled = True
-
-    def _delete_entity_image(self, entity: Entity):
-        mlx.mlx_delete_image(self.mlx_ptr, entity.img)
-
-    def _draw_entities(self):
-        for entity in self.hubs.values():
-            for pixel in entity.shape:
-                for j in range(pixel[1], (pixel[1] + 1)):
-                    for i in range(pixel[0], (pixel[0] + 1)):
-                        r = (pixel[2] >> 24) & 0xFF
-                        g = (pixel[2] >> 16) & 0xFF
-                        b = (pixel[2] >> 8) & 0xFF
-                        if r == g and g == b:
-                            mlx.mlx_put_pixel(entity.img, i, j, pixel[2])
-                        else:
-                            mlx.mlx_put_pixel(entity.img, i, j, entity.color)
-
-    def _attach_entity(self, entity: Entity):
+    def _attach_entity(self, entity: Entity, pos: tuple[int, int] | None = None):
+        if pos is None:
+            pos = entity.pos
         mlx.mlx_image_to_window(
-            self.mlx_ptr, entity.img, entity.pos[0], entity.pos[1]
+            self.mlx_ptr, entity.img, pos[0], pos[1]
         )
-
-    def _attach_entities(self):
-        for entity in self.hubs.values():
-            mlx.mlx_image_to_window(
-                self.mlx_ptr, entity.img, entity.pos[0], entity.pos[1]
-            )
 
     def _draw_entities_names(self, upper: bool = False) -> None:
         for entity in self.hubs.values():
-            name = entity.name if isinstance(entity, MlxHub) else f"D-{entity.id}"
+            name = entity.name
             if upper:
                 name = name.upper()
-            # calculate size of name image
-            width = sum(self.cfg.font[c].width for c in name)
-            height = 12
+            self._write_text(self.img_bg, name, (entity.pos[0], entity.pos[1] - 12))
 
-            # create name image
-            entity.name_img = mlx.mlx_new_image(self.mlx_ptr, width, height)
-            pixels: set[tuple[int, int, int]] = set()
-            x, y = 0, 0
+    def _draw_hub_stats(self, upper: bool = False) -> None:
+        # stats are drawn in bottom
+        for hub in self.hubs.values():
+            stats = f"{len(hub.drones)}/{hub.data.metadata.max_drones} {hub.data.metadata.zone.value}"
+            if upper:
+                stats = stats.upper()
+            self._write_text(self.img_bg, stats, (hub.pos[0], hub.pos[1] + hub.size[1] + 2))
 
-            # create pixels
-            for c in name:
-                new_pixels = set((px + x, py + y, c) for px, py, c in self.cfg.font[c].pixels)
-                pixels.update(new_pixels)
-                x += self.cfg.font[c].width
-
-            # drawe pixels
-            for pixel in pixels:
-                if isinstance(entity, MlxHub):
-                    mlx.mlx_put_pixel(entity.name_img, pixel[0], pixel[1], pixel[2])
-
-            # attach self
-            mlx.mlx_image_to_window(
-                self.mlx_ptr, entity.name_img, entity.pos[0], entity.pos[1] - 12
-                )
-
-    def _delete_entity_name(self, entity: Entity):
-        if entity.name_img:
-            mlx.mlx_delete_image(self.mlx_ptr, entity.name_img)
-            entity.name_img = None
-
-    def _enable_entity_name(self, entity: Entity):
-        if entity.name_img:
-            entity.name_img.contents.enabled = True
-
-    def _disable_entity_name(self, entity: Entity):
-        if entity.name_img:
-            entity.name_img.contents.enabled = False
-
-    def _draw_lines(self, color: int = 0xFFFFFFFF):
-
-        def _draw_line(
-            pos1: tuple[int, int],
-            pos2: tuple[int, int],
-            color: int = 0xFFFFFFFF
-            ) -> None:
-
-            x1, y1 = pos1
-            x2, y2 = pos2
-            dx = x2 - x1
-            dy = y2 - y1
-            step = max(abs(dx), abs(dy))
-            if step == 0:
-                mlx.mlx_put_pixel(self.img_lines, x1, y1, color)
-                return
-            stepx = dx / step
-            stepy = dy / step
-            for i in range(step + 1):
-                mlx.mlx_put_pixel(
-                    self.img_lines, int(x1 + i * stepx), int(y1 + i * stepy), color
-                )
-
+    def _draw_lines(self, color: int = 0xFFFFFF50):
         for conn in self.map.connections:
             hub_a = self.hubs[conn.hub_a]
             hub_b = self.hubs[conn.hub_b]
 
-            hub1_pos = (
-                hub_b.pos[0] + hub_b.size[0] // 2,
-                hub_b.pos[1] + hub_b.size[1] // 2
-            )
-            hub2_pos = (
-                hub_a.pos[0] + hub_a.size[0] // 2,
-                hub_a.pos[1] + hub_a.size[1] // 2
-            )
-            _draw_line(hub1_pos, hub2_pos, color)
+            # calculating center points of hubs
+            x1 = hub_a.pos[0] + hub_a.size[0] // 2
+            y1 = hub_a.pos[1] + hub_a.size[1] // 2
+            x2 = hub_b.pos[0] + hub_b.size[0] // 2
+            y2 = hub_b.pos[1] + hub_b.size[1] // 2
 
-    def display(self, with_label=False):
+            # calculating delta and steps
+            dx = x2 - x1
+            dy = y2 - y1
+            steps = max(abs(dx), abs(dy))
+            if steps == 0:
+                continue
+            x_inc = dx / steps
+            y_inc = dy / steps
+
+            x, y = x1, y1
+            for _ in range(steps):
+                for j in range(-conn.capacity * 3, conn.capacity * 3 + 1):
+                    for i in range(-conn.capacity * 3, conn.capacity * 3 + 1):
+                        mlx.mlx_put_pixel(self.img_bg, int(x) + i, int(y) + j, color)
+                x += x_inc
+                y += y_inc
+
+            # write capacity
+            capacity_text = str(conn.capacity)
+            text_width = len(capacity_text) * 8
+            text_x = int((x1 + x2) / 2 - text_width / 2)
+            text_y = int((y1 + y2) / 2 - 3)
+            self._write_text(self.img_bg, capacity_text, (text_x, text_y))
+
+    def _do_animation(self):
+        for line in self._turns:
+            for mov in line.split():
+                drone_id, hub_dest = mov.split("-")
+                drone_id = int(mov[0][1:])
+                print(f"Moving drone {drone_id} to {mov[1:]}")
+
+
+    def display(self,
+                with_name: bool = False,
+                with_stats: bool = False
+                ) -> None:
 
         mlx.mlx_image_to_window(self.mlx_ptr, self.img_tile, 0, 0)
-        mlx.mlx_image_to_window(self.mlx_ptr, self.img_lines, 0 , 0)
+        mlx.mlx_image_to_window(self.mlx_ptr, self.img_bg, 0 , 0)
 
-        self._draw_entities()
-        self._attach_entities()
+        for hub in self.hubs.values():
+            self._draw_entity(hub)
+            for drone in hub.drones:
+                self._draw_entity(drone)
+            self._attach_entity(hub)
+            self._draw_hub_drones(hub)
+
         self._draw_lines()
 
-        if with_label:
+        if with_name:
             self._draw_entities_names(upper=True)
-
-
+        if with_stats:
+            self._draw_hub_stats(upper=False)
 
         mlx.mlx_loop(self.mlx_ptr)
         mlx.mlx_terminate(self.mlx_ptr)
 
+    def _animate_solution_hook(self, keydata, param=None) -> None:
+
+        if mlx.mlx_is_key_down(self.mlx_ptr, MLX_KEY_ESCAPE):
+            mlx.mlx_close_window(self.mlx_ptr)
+
+        elif mlx.mlx_is_key_down(self.mlx_ptr, MLX_KEY_SPACE):
+            # start animation
+            self._do_animation()
+
+    def run(self, solution: str,
+            with_name: bool = False,
+            with_stats: bool = False,
+            ) -> None:
+        mlx.mlx_image_to_window(self.mlx_ptr, self.img_tile, 0, 0)
+        mlx.mlx_image_to_window(self.mlx_ptr, self.img_bg, 0 , 0)
+
+        for hub in self.hubs.values():
+            self._draw_entity(hub)
+            for drone in hub.drones:
+                self._draw_entity(drone)
+            self._attach_entity(hub)
+            self._draw_hub_drones(hub)
+
+        self._draw_lines()
+
+        if with_name:
+            self._draw_entities_names(upper=True)
+
+        if with_stats:
+            self._draw_hub_stats(upper=False)
+
+        self._turns = solution.splitlines()
+        self._move_index = 0
+        self._last_time = 0
+
+        self.hook_func = ctypes.CFUNCTYPE(None, ctypes.c_void_p)(self._animate_solution_hook)
+        mlx.mlx_key_hook(self.mlx_ptr, self.hook_func, None)
+
+        mlx.mlx_loop(self.mlx_ptr)
+        mlx.mlx_terminate(self.mlx_ptr)

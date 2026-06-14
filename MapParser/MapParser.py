@@ -152,7 +152,8 @@ class MapData(BaseModel):
                 line = line.strip()
                 if not line or line.startswith("#"):
                     continue
-                elif match := m_drones.match(line):
+                line = line.split("#", 1)[0].strip()
+                if match := m_drones.match(line):
                     try:
                         _handle_nb_drones(match)
                     except ValueError as e:

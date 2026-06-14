@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 UPPERCASE = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 LOWERCASE = "abcdefghijklmnopqrstuvwxyz"
-DIGITS    = """0123456789.,!?'"-_:; """
+DIGITS    = """1234567890!"#%'()~+-/[]<>:.,_| """
 
 @dataclass
 class Glyph:
@@ -38,9 +38,9 @@ def load_font() -> dict[str, Glyph]:
     base = os.path.dirname(os.path.abspath(__file__))
     font: dict[str, Glyph] = {}
     for path, charset, w, h in [
-        ("glyphs/uppercase.png", UPPERCASE, 9, 12),
-        ("glyphs/lowercase.png", LOWERCASE, 8, 12),
-        ("glyphs/digits.png",    DIGITS,    9, 12),
+        ("glyphs/uppercase.png", UPPERCASE, 6, 8),
+        ("glyphs/lowercase.png", LOWERCASE, 6, 8),
+        ("glyphs/digits.png",    DIGITS,    6, 8),
     ]:
         for glyph in _parse_glyph_image(os.path.join(base, path), charset, w, h):
             font[glyph.char] = glyph

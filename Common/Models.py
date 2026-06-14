@@ -2,11 +2,9 @@ from pydantic import BaseModel, Field, model_validator
 from Common import ZoneType, ColorType, HubType
 from typing import Any
 
-
 class Drone(BaseModel):
     id: int
     coord: tuple[int, int]
-    color: ColorType = ColorType.white
 
 
 class HubMetadata(BaseModel):
