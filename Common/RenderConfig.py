@@ -19,3 +19,4 @@ class RenderConfig:
     font: dict[str, Glyph]
     drone_shape: set[tuple[int, int, int]]
     hub_shape: set[tuple[int, int, int]]
+    hub_restricted_shape: set[tuple[int, int, int]]

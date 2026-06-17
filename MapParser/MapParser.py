@@ -2,14 +2,14 @@ import re
 from typing import Any
 from pydantic import BaseModel, Field, computed_field, model_validator
 from Common import HubType, ColorType, ZoneType
-from Common import Drone, Hub, Connection, HubMetadata
+from Common import DroneBase, HubBase, ConnectionBase, HubMetadata
 
 
 class MapData(BaseModel):
     nb_drones: int = Field(gt=0)
-    hubs: dict[str, Hub]
-    connections: list[Connection]
-    drones: dict[int, Drone]
+    hubs: dict[str, HubBase]
+    connections: list[ConnectionBase]
+    drones: dict[int, DroneBase]
 
     @computed_field
     @property
@@ -50,8 +50,8 @@ class MapData(BaseModel):
     @classmethod
     def from_file(cls, file_path: str) -> "MapData":
         nb_drones: int | None = None
-        hubs: dict[str, Hub] = {}
-        connections: list[Connection] = []
+        hubs: dict[str, HubBase] = {}
+        connections: list[ConnectionBase] = []
 
         def _handle_nb_drones(match: re.Match) -> None:
             nonlocal nb_drones
@@ -98,7 +98,7 @@ class MapData(BaseModel):
                                     line: -> '{match.string}'")
 
             try:
-                hubs[hub_name] = Hub(
+                hubs[hub_name] = HubBase(
                     name=hub_name,
                     type=HubType(hub_type),
                     pos=(int(x), int(y)),
@@ -121,7 +121,7 @@ class MapData(BaseModel):
 
             try:
                 connections.append(
-                    Connection(hub_a=hub_a, hub_b=hub_b,
+                    ConnectionBase(hub_a=hub_a, hub_b=hub_b,
                             **({"capacity": int(cap)} if cap else {})))
             except Exception as e:
                 raise ValueError(f"invalid connection data.\n\
@@ -183,7 +183,7 @@ class MapData(BaseModel):
             hubs=hubs,
             connections=connections,
             drones={
-                i: Drone(id=i, coord=start_hub_pos)
+                i: DroneBase(id=i, coord=start_hub_pos)
                 for i in range(1, nb_drones + 1)  # type: ignore
             }
         )

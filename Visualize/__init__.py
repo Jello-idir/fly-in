@@ -1,3 +1,3 @@
-from .Visualize import MlxWindow, Entity, MlxDrone, MlxHub
+from .Visualize import MlxWindow, Entity, Drone, HubStation
 
-__all__ = ['MlxWindow', 'Entity', 'MlxDrone', 'MlxHub']
+__all__ = ['MlxWindow', 'Entity', 'Drone', 'HubStation']

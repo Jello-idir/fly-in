@@ -1,7 +1,7 @@
 from .RenderConfig import RenderConfig
 from .Types import HubType, ColorType, ZoneType
-from .Models import HubMetadata, Hub, Connection, Drone
+from .Models import HubMetadata, HubBase, ConnectionBase, DroneBase
 
 
 __all__ = ["RenderConfig", "HubType", "ColorType", "ZoneType",
-           "HubMetadata", "Hub", "Connection", "Drone"]
+           "HubMetadata", "HubBase", "ConnectionBase", "DroneBase"]

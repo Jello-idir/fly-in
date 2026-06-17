@@ -2,7 +2,8 @@ from pydantic import BaseModel, Field, model_validator
 from Common import ZoneType, ColorType, HubType
 from typing import Any
 
-class Drone(BaseModel):
+
+class DroneBase(BaseModel):
     id: int
     coord: tuple[int, int]
 
@@ -13,15 +14,14 @@ class HubMetadata(BaseModel):
     max_drones: int = Field(default=1, gt=0)
 
 
-class Hub(BaseModel):
+class HubBase(BaseModel):
     name: str
     type: HubType
     pos: tuple[int, int]
     metadata: HubMetadata = HubMetadata()
-    drones: list[Drone]
 
 
-class Connection(BaseModel):
+class ConnectionBase(BaseModel):
     hub_a: str
     hub_b: str
     capacity: int = Field(default=1, gt=0)

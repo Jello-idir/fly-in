@@ -38,6 +38,7 @@ class SHAPE(set[tuple[int, int, int]], Enum):
         return self.value
     drone = load_shape_from_png("Assets/drone.png")
     hub = load_shape_from_png("Assets/hub.png")
+    hub_restricted = load_shape_from_png("Assets/hub_restricted.png")
 
 
 def signal_handler(sig, frame):
@@ -78,6 +79,7 @@ def _init_cfg(mapdata: MapData) -> RenderConfig:
         font=font,
         drone_shape=SHAPE.drone(),
         hub_shape=SHAPE.hub(),
+        hub_restricted_shape=SHAPE.hub_restricted()
     )
 
 
@@ -89,7 +91,8 @@ if __name__ == "__main__":
 
     # parsing
     try:
-        mapdata = MapData.from_file("maps/tst.txt")
+        mapdata = MapData.from_file("maps/tst.txt" \
+        "")
     except Exception as e:
         sys.stderr.write(f"\033[31mError:\033[0m {e}\n")
         sys.exit(1)
