@@ -4,30 +4,29 @@ from MapParser import MapData
 from collections import deque
 import ctypes
 import re
-import time
+import random
 
 
-HUB_DEPTH = 1
-STATS_DEPTH = 2
-DRONE_DEPTH = 3
+BG_DEPTH = 0
+LINES_DEPTH = 1
+TRAIL_DEPTH = 2
+HUB_DEPTH = 3
+STATS_DEPTH = 4
+DRONE_DEPTH = 5
+
+
+TRAIL_OPACITY = 0xff
+
+
 
 ANIMATING = 0
 ANIMATING_LINE = 0
 LIST_OF_MOVES = []
-QUEUE = {}
+QUEUE = deque()
 IS_QUEUE = False
-STEPS = 60
+STEPS = 80
+STEP_IDX = STEPS
 
-
-
-def fill_image(img, color: int):
-    for y in range(img.contents.height):
-        for x in range(img.contents.width):
-            idx = (y * img.contents.width + x) * 4
-            img.contents.pixels[idx] = color >> 24 & 0xff
-            img.contents.pixels[idx + 1] = color >> 16 & 0xff
-            img.contents.pixels[idx + 2] = color >> 8 & 0xff
-            img.contents.pixels[idx + 3] = color & 0xff
 
 
 class Entity:
@@ -52,8 +51,8 @@ class Entity:
             self.size[0],
             self.size[1],
         )
-        self.stats_img = None
-        self.name_img = None
+        self.img_name = None
+        self.img_stat = None
 
 
 class Drone(Entity):
@@ -72,14 +71,15 @@ class HubStation(Entity):
         hub_model: HubBase,
     ) -> None:
         self.name: str = hub_model.name
-        self.metadata = hub_model.metadata
-        self.type = hub_model.type
-        self.drones: dict[int, Drone] = {}
+        self.metadata: HubMetadata = hub_model.metadata
+        self.type: HubType = hub_model.type
+        self.drones: deque[Drone] = deque()
         self.connections: list[Connection] = []
         shape = cfg.hub_shape if self.metadata.zone != ZoneType.restricted else cfg.hub_restricted_shape
         super().__init__(
             mlx_ptr, cfg, hub_model.pos, hub_model.metadata.color, shape
         )
+
 
 class Connection:
     def __init__(self, hub_a: HubStation, hub_b: HubStation, capacity: int):
@@ -89,6 +89,7 @@ class Connection:
         self.start_pos = (hub_a.pos[0] + hub_a.size[0] // 2, hub_a.pos[1] + hub_a.size[1] // 2)
         self.end_pos = (hub_b.pos[0] + hub_b.size[0] // 2, hub_b.pos[1] + hub_b.size[1] // 2)
         self.center = ((self.start_pos[0] + self.end_pos[0]) // 2, (self.start_pos[1] + self.end_pos[1]) // 2)
+        self.drones: deque[Drone] = deque()
 
 
 class MlxWindow:
@@ -101,7 +102,7 @@ class MlxWindow:
         self._solution_line = deque()
         self._solution_move = deque()
         self.img_tile = mlx.mlx_new_image(self.mlx_ptr, self.cfg.width, self.cfg.height)
-        self.img_stats = mlx.mlx_new_image(self.mlx_ptr, self.cfg.width, self.cfg.height)
+        self.img_trails = mlx.mlx_new_image(self.mlx_ptr, self.cfg.width, self.cfg.height)
 
     @classmethod
     def from_map(cls, mapdata: MapData, cfg: RenderConfig):
@@ -121,7 +122,7 @@ class MlxWindow:
             manager.drones[drone_entity.id] = drone_entity
 
         # attaching drones to the first hub
-        manager.hubs[start_hub.name].drones = manager.drones
+        manager.hubs[start_hub.name].drones.extend(manager.drones.values())
 
         # creating connections
         manager.connections = [
@@ -132,7 +133,6 @@ class MlxWindow:
         for conn in manager.connections:
             conn.hub_a.connections.append(conn)
             conn.hub_b.connections.append(conn)
-
 
         return manager
 
@@ -153,6 +153,16 @@ class MlxWindow:
                         img_tile.contents.pixels[idx + 3] = pixel[2] & 0xff
 
         self.img_tile = img_tile
+
+    @staticmethod
+    def fill_image(img, color: int):
+        for y in range(img.contents.height):
+            for x in range(img.contents.width):
+                idx = (y * img.contents.width + x) * 4
+                img.contents.pixels[idx] = color >> 24 & 0xff
+                img.contents.pixels[idx + 1] = color >> 16 & 0xff
+                img.contents.pixels[idx + 2] = color >> 8 & 0xff
+                img.contents.pixels[idx + 3] = color & 0xff
 
     def _write_text(self, img, text: str, pos: tuple[int, int]) -> None:
         init_x, init_y = pos
@@ -181,7 +191,6 @@ class MlxWindow:
 
             x += self.cfg.font[c].width
 
-
     def _draw_entity(self, entity: Entity) -> None:
         for pixel in entity.shape:
             for y in range(pixel[1], (pixel[1] + 1)):
@@ -199,9 +208,18 @@ class MlxWindow:
                     entity.img.contents.pixels[idx + 2] = color >> 8 & 0xff
                     entity.img.contents.pixels[idx + 3] = color & 0xff
 
+    def _attach_entity(self, entity: Entity, pos: tuple[int, int] | None = None) -> None:
+        if pos is None:
+            pos = entity.pos
+        mlx.mlx_image_to_window(self.mlx_ptr, entity.img, pos[0], pos[1])
+        if isinstance(entity, HubStation):
+            entity.img.contents.instances[0].z = HUB_DEPTH
+        elif isinstance(entity, Drone):
+            entity.img.contents.instances[0].z = DRONE_DEPTH
+
     def _attach_hub_drones(self, hub: HubStation) -> None:
         idx = 0
-        for id, drone in hub.drones.items():
+        for drone in hub.drones:
             if idx >= 12:
                 idx = 11
             offset_x = (idx % 3) * 16 + 10
@@ -212,29 +230,26 @@ class MlxWindow:
             drone.pos = (posx, poxy)
             self._attach_entity(drone, drone.pos)
 
-    def _attach_entity(self, entity: Entity, pos: tuple[int, int] | None = None) -> None:
-        if pos is None:
-            pos = entity.pos
-        mlx.mlx_image_to_window(self.mlx_ptr, entity.img, pos[0], pos[1])
-        if isinstance(entity, HubStation):
-            entity.img.contents.instances[0].z = HUB_DEPTH
-        elif isinstance(entity, Drone):
-            entity.img.contents.instances[0].z = DRONE_DEPTH
+    def _draw_hub_name(self, hub: HubStation, uppercase: bool = True) -> None:
+        name = hub.name
+        name = name.upper() if uppercase else name.title()
+        hub.img_name = mlx.mlx_new_image(self.mlx_ptr, len(name) * 8, 10)
+        self._write_text(hub.img_name, name, (0, 0))
 
-    def _draw_entities_names(self, uppercase: bool = True) -> None:
-        for entity in self.hubs.values():
-            name = entity.name
-            name = name.upper() if uppercase else name.title()
-            self._write_text(self.img_stats, name, (entity.pos[0], entity.pos[1] - 12))
+    def _attach_hub_name(self, hub: HubStation) -> None:
+        if hub.img_name:
+            mlx.mlx_image_to_window(self.mlx_ptr, hub.img_name, hub.pos[0], hub.pos[1] - 12)
+            hub.img_name.contents.instances[0].z = HUB_DEPTH
 
-    def _draw_hub_stats(self, uppercase: bool = False) -> None:
-        # stats are drawn in bottom
+    def _draw_hubs_stats(self, uppercase: bool = False) -> None:
+
+        # delete image and assign new one
         for hub in self.hubs.values():
-            stats = f"{len(hub.drones)}/{hub.metadata.max_drones} {hub.metadata.zone.value}"
-            stats = stats.upper() if uppercase else stats.title()
-            self._write_text(
-                self.img_stats, stats, (hub.pos[0], hub.pos[1] + hub.size[1] + 2)
-            )
+            if hub.img_stat:
+                mlx.mlx_delete_image(self.mlx_ptr, hub.img_stat)
+                hub.img_stat = None
+            self._draw_hub_stats(hub, uppercase)
+            self._attach_hub_stats(hub)
 
     def _draw_lines(self, color: int = 0xFFFFFF50) -> None:
         for conn in self.connections:
@@ -276,43 +291,64 @@ class MlxWindow:
             text_y = int((y1 + y2) / 2 - 3)
             self._write_text(self.img_tile, capacity_text, (text_x, text_y))
 
+    def _draw_hub_stats(self, hub: HubStation, uppercase: bool = False) -> None:
+        stats = f"{len(hub.drones)}/{hub.metadata.max_drones} {hub.metadata.zone.value}"
+        stats = stats.upper() if uppercase else stats.title()
+        hub.img_stat = mlx.mlx_new_image(self.mlx_ptr, len(stats) * 8, 10)
+        self._write_text(
+            hub.img_stat, stats, (0, 0)
+        )
+
+    def _attach_hub_stats(self, hub: HubStation) -> None:
+        if hub.img_stat:
+            mlx.mlx_image_to_window(self.mlx_ptr, hub.img_stat, hub.pos[0], hub.pos[1] + hub.size[1] + 2)
+            hub.img_stat.contents.instances[0].z = STATS_DEPTH
 
     def _animate_queue(self) -> None:
-        global STEPS
+        global STEP_IDX
         global ANIMATING_LINE
         global IS_QUEUE
         global QUEUE
 
-
-        for drone_id, (start_pos, end_pos, start_loc, dest) in QUEUE.items():
-            drone = self.drones[drone_id]
-            if STEPS == 0:
-                drone.img.contents.instances[0].x = end_pos[0]
-                drone.img.contents.instances[0].y = end_pos[1]
+        for (drone, start_pos, end_pos, dest) in QUEUE:
+            if STEP_IDX == 0:
+                if isinstance(dest, HubStation) and dest.type == HubType.end_hub:
+                    drone.img.contents.enabled = False
                 drone.location = dest
+                drone.location.drones.append(drone)
                 drone.pos = (end_pos[0], end_pos[1])
-
-            elif STEPS == 60:
-                drone.img.contents.instances[0].x = start_pos[0]
-                drone.img.contents.instances[0].y = start_pos[1]
             else:
-                drone.img.contents.instances[0].x = int(start_pos[0] + (end_pos[0] - start_pos[0]) * (60 - STEPS) / 60)
-                drone.img.contents.instances[0].y = int(start_pos[1] + (end_pos[1] - start_pos[1]) * (60 - STEPS) / 60)
+                drone.img.contents.instances[0].x = int(start_pos[0] + (end_pos[0] - start_pos[0]) * (STEPS - STEP_IDX) / STEPS)
+                drone.img.contents.instances[0].y = int(start_pos[1] + (end_pos[1] - start_pos[1]) * (STEPS - STEP_IDX) / STEPS)
 
-        if STEPS == 0:
+                # draw trail in img.line
+                # thichness
+                thinkess = 1
+                for j in range(-thinkess, thinkess):
+                    for i in range(-thinkess, thinkess):
+                        x = int(start_pos[0] + (end_pos[0] - start_pos[0]) * (STEPS - STEP_IDX) / STEPS) + drone.size[0] // 2
+                        y = int(start_pos[1] + (end_pos[1] - start_pos[1]) * (STEPS - STEP_IDX) / STEPS) + drone.size[1] // 2
+                        x = x + i
+                        y = y + j
+                        idx = (y * self.img_trails.contents.width + x) * 4
+                        color = drone.color
+                        self.img_trails.contents.pixels[idx] = color >> 24 & 0xff
+                        self.img_trails.contents.pixels[idx + 1] = color >> 16 & 0xff
+                        self.img_trails.contents.pixels[idx + 2] = color >> 8 & 0xff
+                        self.img_trails.contents.pixels[idx + 3] = TRAIL_OPACITY
+
+        if STEP_IDX == 0:
             LIST_OF_MOVES.clear()
             QUEUE.clear()
             ANIMATING_LINE = 0
             IS_QUEUE = False
-            STEPS = 60
+            STEP_IDX = STEPS
             return
-        STEPS -= 1
-
-
+        STEP_IDX -= 1
 
     def _animate_line(self) -> None:
         global ANIMATING_LINE
-        global STEPS
+        global STEP_IDX
         global IS_QUEUE
         global QUEUE
 
@@ -329,16 +365,13 @@ class MlxWindow:
                 drone = self.drones[drone_id]
                 dest = self.hubs[dest_name]
                 if isinstance(drone.location, HubStation):
-                    start_pos = drone.pos
+                    start_pos = drone.img.contents.instances[0].x, drone.img.contents.instances[0].y
                     end_pos = (
                         dest.pos[0] + dest.size[0] // 2 - drone.size[0] // 2,
                         dest.pos[1] + dest.size[1] // 2 - drone.size[1] // 2
                     )
                 elif isinstance(drone.location, Connection):
-                    start_pos = (
-                        drone.location.center[0] - drone.size[0] // 2,
-                        drone.location.center[1] - drone.size[1] // 2
-                    )
+                    start_pos = drone.img.contents.instances[0].x, drone.img.contents.instances[0].y
                     end_pos = (
                         dest.pos[0] + dest.size[0] // 2 - drone.size[0] // 2,
                         dest.pos[1] + dest.size[1] // 2 - drone.size[1] // 2
@@ -359,19 +392,20 @@ class MlxWindow:
                         if (conn.hub_a == hub_b or conn.hub_b == hub_b)
                     )
                     # start and end should be the center of connection
-                    start_pos = (hub_a.pos[0] + hub_a.size[0] // 2 - drone.size[0] // 2,
-                                 hub_a.pos[1] + hub_a.size[1] // 2 - drone.size[1] // 2
-                                 )
+                    start_pos = drone.img.contents.instances[0].x, drone.img.contents.instances[0].y
                     end_pos = (
                         dest.center[0] - drone.size[0] // 2,
                         dest.center[1] - drone.size[1] // 2
                     )
-
-            QUEUE[drone_id] = (start_pos, end_pos, drone.location, dest)
+            # remove drone from prev location
+            drone.location.drones.remove(drone)
+            QUEUE.append((drone,
+                          start_pos,
+                          (end_pos[0] + random.randint(-10, 10), end_pos[1] + random.randint(-10, 10))
+                          , dest))
 
         IS_QUEUE = True
         self._animate_queue()
-
 
     def _animate(self):
         global ANIMATING_LINE
@@ -392,11 +426,10 @@ class MlxWindow:
                 ANIMATING = 0
                 return
 
-
     def _loop_hook(self, param=None):
         if ANIMATING:
             self._animate()
-
+        self._draw_hubs_stats()
 
     def _hook_func(self, keydata, param=None):
         global ANIMATING
@@ -416,8 +449,10 @@ class MlxWindow:
 
         # attach tile and background images to window
         mlx.mlx_image_to_window(self.mlx_ptr, self.img_tile, 0, 0)
-        mlx.mlx_image_to_window(self.mlx_ptr, self.img_stats, 0, 0)
-        self.img_stats.contents.instances[0].z = 2
+        self.img_tile.contents.instances[0].z = BG_DEPTH
+
+        mlx.mlx_image_to_window(self.mlx_ptr, self.img_trails, 0, 0)
+        self.img_trails.contents.instances[0].z = TRAIL_DEPTH
 
         for drone in self.drones.values():
             self._draw_entity(drone)
@@ -425,15 +460,15 @@ class MlxWindow:
         for hub in self.hubs.values():
             self._draw_entity(hub)
             self._attach_entity(hub)
+            self._draw_hub_name(hub)
+            self._attach_hub_name(hub)
             self._attach_hub_drones(hub)
 
         self._draw_lines()
 
-        if not no_name:
-            self._draw_entities_names()
 
         if not no_stats:
-            self._draw_hub_stats()
+            self._draw_hubs_stats()
 
 
         # print(f"img_stats {self.img_stats.contents.instances[0].z}")
