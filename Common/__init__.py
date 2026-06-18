@@ -1,4 +1,4 @@
-from .RenderConfig import RenderConfig
+from .RenderConfig import RenderConfig, Shapes
 from .Types import HubType, ColorType, ZoneType
 from .Models import HubMetadata, HubBase, ConnectionBase, DroneBase
 

@@ -7,7 +7,7 @@ from MapParser import MapData
 from Tools import *
 from PIL import Image
 from PixelFont import load_font
-from Common import RenderConfig
+from Common import RenderConfig, Shapes
 
 
 # COLORS
@@ -39,6 +39,8 @@ class SHAPE(set[tuple[int, int, int]], Enum):
     drone = load_shape_from_png("Assets/drone.png")
     hub = load_shape_from_png("Assets/hub.png")
     hub_restricted = load_shape_from_png("Assets/hub_restricted.png")
+    hub_priority = load_shape_from_png("Assets/hub_priority.png")
+    hub_blocked = load_shape_from_png("Assets/hub_blocked.png")
 
 
 def signal_handler(sig, frame):
@@ -77,11 +79,14 @@ def _init_cfg(mapdata: MapData) -> RenderConfig:
         padd_x=padd_x,
         padd_y=padd_y,
         font=font,
-        drone_shape=SHAPE.drone(),
-        hub_shape=SHAPE.hub(),
-        hub_restricted_shape=SHAPE.hub_restricted()
+        shapes=Shapes(
+            drone=SHAPE.drone(),
+            hub=SHAPE.hub(),
+            hub_restricted=SHAPE.hub_restricted(),
+            hub_priority=SHAPE.hub_priority(),
+            hub_blocked=SHAPE.hub_blocked(),
+        )
     )
-
 
 
 if __name__ == "__main__":
@@ -91,8 +96,7 @@ if __name__ == "__main__":
 
     # parsing
     try:
-        mapdata = MapData.from_file("maps/tst.txt" \
-        "")
+        mapdata = MapData.from_file("maps/tst.txt")
     except Exception as e:
         sys.stderr.write(f"\033[31mError:\033[0m {e}\n")
         sys.exit(1)
@@ -112,8 +116,9 @@ if __name__ == "__main__":
     tile = load_shape_from_png("Assets/ground.png")
     window.tilify(tile)
 
-    # mlx run
     solution = open("solution.txt").read()
+
+    # mlx run
     window.run(solution)
     #window.display(with_name=True, with_stats=True)
     # -----------

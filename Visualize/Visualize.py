@@ -17,13 +17,10 @@ DRONE_DEPTH = 5
 
 TRAIL_OPACITY = 0xff
 
-
-
 ANIMATING = 0
 ANIMATING_LINE = 0
-LIST_OF_MOVES = []
-QUEUE = deque()
-IS_QUEUE = False
+SOLUTION_LINE = []
+DRONES_QUEUE = deque()
 STEPS = 80
 STEP_IDX = STEPS
 
@@ -60,7 +57,7 @@ class Drone(Entity):
         self.id: int = drone_base.id
         self.location: HubStation | Connection = current_hub
         color = list(ColorType)[(self.id % 7) * 4]
-        super().__init__(mlx_ptr, cfg, drone_base.coord, color, cfg.drone_shape)
+        super().__init__(mlx_ptr, cfg, drone_base.coord, color, cfg.shapes.drone)
 
 
 class HubStation(Entity):
@@ -75,10 +72,21 @@ class HubStation(Entity):
         self.type: HubType = hub_model.type
         self.drones: deque[Drone] = deque()
         self.connections: list[Connection] = []
-        shape = cfg.hub_shape if self.metadata.zone != ZoneType.restricted else cfg.hub_restricted_shape
+        shape = self.get_shape_by_type(self.type, self.metadata, cfg)
         super().__init__(
             mlx_ptr, cfg, hub_model.pos, hub_model.metadata.color, shape
         )
+
+    @staticmethod
+    def get_shape_by_type(hub_type: HubType, metadata: HubMetadata, cfg: RenderConfig) -> set[tuple[int, int, int]]:
+        if metadata.zone == ZoneType.restricted:
+            return cfg.shapes.hub_restricted
+        elif metadata.zone == ZoneType.priority:
+            return cfg.shapes.hub_priority
+        elif metadata.zone == ZoneType.blocked:
+            return cfg.shapes.hub_blocked
+        else:
+            return cfg.shapes.hub
 
 
 class Connection:
@@ -99,8 +107,7 @@ class MlxWindow:
         self.hubs: dict[str, HubStation] = {}
         self.drones: dict[int, Drone] = {}
         self.cfg: RenderConfig = cfg
-        self._solution_line = deque()
-        self._solution_move = deque()
+        self._solution = deque()
         self.img_tile = mlx.mlx_new_image(self.mlx_ptr, self.cfg.width, self.cfg.height)
         self.img_trails = mlx.mlx_new_image(self.mlx_ptr, self.cfg.width, self.cfg.height)
 
@@ -251,7 +258,105 @@ class MlxWindow:
             self._draw_hub_stats(hub, uppercase)
             self._attach_hub_stats(hub)
 
-    def _draw_lines(self, color: int = 0xFFFFFF50) -> None:
+    def _draw_line(self,
+                   img, start: tuple[int, int],
+                   end: tuple[int, int],
+                   color: int = 0xffffffaa,
+                   thickness: int = 0
+                   ) -> None:
+        x1, y1 = start
+        x2, y2 = end
+
+        dx = x2 - x1
+        dy = y2 - y1
+        steps = max(abs(dx), abs(dy))
+        if steps == 0:
+            return
+        x_inc = dx / steps
+        y_inc = dy / steps
+
+        x, y = x1, y1
+        for _ in range(steps):
+            for j in range(-thickness, thickness + 1):
+                for i in range(-thickness, thickness + 1):
+                    idx = ((int(y) + j) * img.contents.width + (int(x) + i)) * 4
+                    img.contents.pixels[idx] = color >> 24 & 0xff
+                    img.contents.pixels[idx + 1] = color >> 16 & 0xff
+                    img.contents.pixels[idx + 2] = color >> 8 & 0xff
+                    img.contents.pixels[idx + 3] = color & 0xff
+
+            x += x_inc
+            y += y_inc
+
+    def _draw_line_no_thickness(self, img, start: tuple[int, int], end: tuple[int, int], color: int = 0xffffffaa) -> None:
+        x1, y1 = start
+        x2, y2 = end
+
+        dx = x2 - x1
+        dy = y2 - y1
+        steps = max(abs(dx), abs(dy))
+        if steps == 0:
+            return
+        x_inc = dx / steps
+        y_inc = dy / steps
+
+        x, y = x1, y1
+        for _ in range(steps):
+            idx = (int(y) * img.contents.width + int(x)) * 4
+            img.contents.pixels[idx] = color >> 24 & 0xff
+            img.contents.pixels[idx + 1] = color >> 16 & 0xff
+            img.contents.pixels[idx + 2] = color >> 8 & 0xff
+            img.contents.pixels[idx + 3] = color & 0xff
+
+            x += x_inc
+            y += y_inc
+
+    def _draw_line_anti_aliased(self, img, start: tuple[int, int], end: tuple[int, int], color: int = 0xffffffaa) -> None:
+        # Xiaolin Wu's line algorithm
+        def plot(x, y, c):
+            if 0 <= x < img.contents.width and 0 <= y < img.contents.height:
+                idx = (int(y) * img.contents.width + int(x)) * 4
+                img.contents.pixels[idx] = color >> 24 & 0xff
+                img.contents.pixels[idx + 1] = color >> 16 & 0xff
+                img.contents.pixels[idx + 2] = color >> 8 & 0xff
+                img.contents.pixels[idx + 3] = int((color & 0xff) * c)
+
+        x1, y1 = start
+        x2, y2 = end
+
+        dx = x2 - x1
+        dy = y2 - y1
+
+        if abs(dx) > abs(dy):
+            if x1 > x2:
+                x1, y1, x2, y2 = x2, y2, x1, y1
+            gradient = dy / dx if dx != 0 else 0
+
+            # handle first endpoint
+            xend = round(x1)
+            yend = y1 + gradient * (xend - x1)
+            plot(xend, int(yend), (1 - (yend - int(yend))))
+            plot(xend, int(yend) + 1, (yend - int(yend)))
+            intery = yend + gradient
+
+            # handle second endpoint
+            xend = round(x2)
+            yend = y2 + gradient * (xend - x2)
+            plot(xend, int(yend), (1 - (yend - int(yend))))
+            plot(xend, int(yend) + 1, (yend - int(yend)))
+
+            # main loop
+            for x in range(int(x1) + 1, int(x2)):
+                plot(x, int(intery), (1 - (intery - int(intery))))
+                plot(x, int(intery) + 1, (intery - int(intery)))
+                intery += gradient
+        else:
+            if y1 > y2:
+                x1, y1, x2, y2 = x2, y2, x1, y1
+            gradient = dx / dy if dy != 0 else 0
+
+
+    def _draw_edges(self, color: int = 0xFFFFFF50) -> None:
         for conn in self.connections:
             hub_a = conn.hub_a
             hub_b = conn.hub_b
@@ -262,27 +367,8 @@ class MlxWindow:
             x2 = hub_b.pos[0] + hub_b.size[0] // 2
             y2 = hub_b.pos[1] + hub_b.size[1] // 2
 
-            # calculating delta and steps
-            dx = x2 - x1
-            dy = y2 - y1
-            steps = max(abs(dx), abs(dy))
-            if steps == 0:
-                continue
-            x_inc = dx / steps
-            y_inc = dy / steps
-
-            x, y = x1, y1
-            for _ in range(steps):
-                for j in range(-conn.capacity * 3, conn.capacity * 3 + 1):
-                    for i in range(-conn.capacity * 3, conn.capacity * 3 + 1):
-                        idx = ((int(y) + j) * self.img_tile.contents.width + (int(x) + i)) * 4
-                        self.img_tile.contents.pixels[idx] = color >> 24 & 0xff
-                        self.img_tile.contents.pixels[idx + 1] = color >> 16 & 0xff
-                        self.img_tile.contents.pixels[idx + 2] = color >> 8 & 0xff
-                        self.img_tile.contents.pixels[idx + 3] = color & 0xff
-
-                x += x_inc
-                y += y_inc
+            # thickness based on capacity
+            self._draw_line(self.img_tile, (x1, y1), (x2, y2), color=color, thickness=conn.capacity * 3)
 
             # write capacity
             capacity_text = str(conn.capacity)
@@ -304,44 +390,43 @@ class MlxWindow:
             mlx.mlx_image_to_window(self.mlx_ptr, hub.img_stat, hub.pos[0], hub.pos[1] + hub.size[1] + 2)
             hub.img_stat.contents.instances[0].z = STATS_DEPTH
 
-    def _animate_queue(self) -> None:
+    def _animate_drones(self) -> None:
         global STEP_IDX
         global ANIMATING_LINE
-        global IS_QUEUE
-        global QUEUE
+        global DRONES_QUEUE
 
-        for (drone, start_pos, end_pos, dest) in QUEUE:
+        for (drone, start_pos, end_pos, dest) in DRONES_QUEUE:
             if STEP_IDX == 0:
                 if isinstance(dest, HubStation) and dest.type == HubType.end_hub:
                     drone.img.contents.enabled = False
                 drone.location = dest
-                drone.location.drones.append(drone)
                 drone.pos = (end_pos[0], end_pos[1])
             else:
-                drone.img.contents.instances[0].x = int(start_pos[0] + (end_pos[0] - start_pos[0]) * (STEPS - STEP_IDX) / STEPS)
-                drone.img.contents.instances[0].y = int(start_pos[1] + (end_pos[1] - start_pos[1]) * (STEPS - STEP_IDX) / STEPS)
+                from_x = drone.img.contents.instances[0].x
+                from_y = drone.img.contents.instances[0].y
+                to_x = int(start_pos[0] + (end_pos[0] - start_pos[0]) * (STEPS - STEP_IDX) / STEPS)
+                to_y = int(start_pos[1] + (end_pos[1] - start_pos[1]) * (STEPS - STEP_IDX) / STEPS)
+                drone.img.contents.instances[0].x = to_x
+                drone.img.contents.instances[0].y = to_y
 
-                # draw trail in img.line
-                # thichness
-                thinkess = 1
-                for j in range(-thinkess, thinkess):
-                    for i in range(-thinkess, thinkess):
-                        x = int(start_pos[0] + (end_pos[0] - start_pos[0]) * (STEPS - STEP_IDX) / STEPS) + drone.size[0] // 2
-                        y = int(start_pos[1] + (end_pos[1] - start_pos[1]) * (STEPS - STEP_IDX) / STEPS) + drone.size[1] // 2
-                        x = x + i
-                        y = y + j
-                        idx = (y * self.img_trails.contents.width + x) * 4
-                        color = drone.color
-                        self.img_trails.contents.pixels[idx] = color >> 24 & 0xff
-                        self.img_trails.contents.pixels[idx + 1] = color >> 16 & 0xff
-                        self.img_trails.contents.pixels[idx + 2] = color >> 8 & 0xff
-                        self.img_trails.contents.pixels[idx + 3] = TRAIL_OPACITY
+                # draw trail in img_trails
+                self._draw_line_no_thickness(
+                    self.img_trails,
+                    (
+                        from_x + drone.size[0] // 2,
+                        from_y + drone.size[1] // 2
+                    ),
+                    (
+                        to_x + drone.size[0] // 2,
+                        to_y + drone.size[1] // 2
+                    ),
+                     color=drone.color
+                     )
 
         if STEP_IDX == 0:
-            LIST_OF_MOVES.clear()
-            QUEUE.clear()
+            SOLUTION_LINE.clear()
+            DRONES_QUEUE.clear()
             ANIMATING_LINE = 0
-            IS_QUEUE = False
             STEP_IDX = STEPS
             return
         STEP_IDX -= 1
@@ -349,15 +434,14 @@ class MlxWindow:
     def _animate_line(self) -> None:
         global ANIMATING_LINE
         global STEP_IDX
-        global IS_QUEUE
-        global QUEUE
+        global DRONES_QUEUE
 
-        if IS_QUEUE:
-            self._animate_queue()
+        if DRONES_QUEUE:
+            self._animate_drones()
             return
 
         # setting up queue for queue animation
-        for move in LIST_OF_MOVES:
+        for move in SOLUTION_LINE:
             # going to a hub
             if path_to_hub := re.match(r"D(\d+)-(\w+)$", move):
                 drone_id = int(path_to_hub.group(1))
@@ -399,27 +483,35 @@ class MlxWindow:
                     )
             # remove drone from prev location
             drone.location.drones.remove(drone)
-            QUEUE.append((drone,
-                          start_pos,
-                          (end_pos[0] + random.randint(-10, 10), end_pos[1] + random.randint(-10, 10))
-                          , dest))
+            dest.drones.append(drone)
+            DRONES_QUEUE.append(
+                    (
+                        drone,
+                        start_pos,
+                        (
+                            end_pos[0] + random.randint(-10, 10),
+                            end_pos[1] + random.randint(-10, 10)
+                        ),
+                        dest
+                    )
+                )
 
         IS_QUEUE = True
-        self._animate_queue()
+        self._animate_drones()
 
     def _animate(self):
         global ANIMATING_LINE
-        global LIST_OF_MOVES
+        global SOLUTION_LINE
 
         if ANIMATING_LINE:
             self._animate_line()
 
         else:
             try:
-                line = self._solution_line.popleft()
+                line = self._solution.popleft()
                 ANIMATING_LINE = 1
                 for move in line.split():
-                    LIST_OF_MOVES.append(move.strip())
+                    SOLUTION_LINE.append(move.strip())
                 self._animate_line()
             except IndexError:
                 global ANIMATING
@@ -464,7 +556,7 @@ class MlxWindow:
             self._attach_hub_name(hub)
             self._attach_hub_drones(hub)
 
-        self._draw_lines()
+        self._draw_edges()
 
 
         if not no_stats:
@@ -476,7 +568,7 @@ class MlxWindow:
         # print(f"hub {self.hubs[next(iter(self.hubs))].img.contents.instances[0].z}")
 
 
-        self._solution_line.extend(solution.splitlines())
+        self._solution.extend(solution.splitlines())
 
         self._hook_func_cb = ctypes.CFUNCTYPE(None, ctypes.c_void_p)(self._hook_func)
         self._loop_hook_cb = ctypes.CFUNCTYPE(None, ctypes.c_void_p)(self._loop_hook)
