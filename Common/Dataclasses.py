@@ -1,14 +1,6 @@
 from dataclasses import dataclass
 from PixelFont import Glyph
-
-
-@dataclass
-class Shapes:
-    drone: set[tuple[int, int, int]]
-    hub: set[tuple[int, int, int]]
-    hub_restricted: set[tuple[int, int, int]]
-    hub_priority: set[tuple[int, int, int]]
-    hub_blocked: set[tuple[int, int, int]]
+from Common import Shapes
 
 
 @dataclass
@@ -27,4 +19,4 @@ class RenderConfig:
     padd_x: int
     padd_y: int
     font: dict[str, Glyph]
-    shapes: Shapes
+    shapes: type[Shapes]

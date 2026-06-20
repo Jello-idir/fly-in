@@ -1,6 +1,5 @@
 from pydantic import BaseModel, Field, model_validator
 from Common import ZoneType, ColorType, HubType
-from typing import Any
 
 
 class DroneBase(BaseModel):

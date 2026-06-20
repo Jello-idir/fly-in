@@ -2,45 +2,10 @@ import signal
 import sys
 from Visualize import *
 from MLX.libmlx import *
-from enum import Enum
 from MapParser import MapData
 from Tools import *
-from PIL import Image
 from PixelFont import load_font
 from Common import RenderConfig, Shapes
-
-
-# COLORS
-# ---------------------------------
-BLUE   = 0x729AFF << 8 | 0xff
-GREEN  = 0x59AE6D << 8 | 0xff
-RED    = 0xFE8282 << 8 | 0xff
-YELLOW = 0xFFFB84  << 8 | 0xff
-ORANGE = 0xFBA951  << 8 | 0xff
-# ------------------------------
-
-
-def load_shape_from_png(path: str) -> set[tuple[int, int, int]]:
-    img = Image.open(path).convert("RGBA")
-    points = set()
-    for y in range(img.height):
-        for x in range(img.width):
-            pixel = img.getpixel((x, y))  # type: ignore
-            if pixel[3] > 0:  # type: ignore
-                r, g, b, a = pixel  # type: ignore
-                color = (r << 24) + (g << 16) + (b << 8) + a
-                points.add((x, y, color))
-    return points
-
-
-class SHAPE(set[tuple[int, int, int]], Enum):
-    def __call__(self):
-        return self.value
-    drone = load_shape_from_png("Assets/drone.png")
-    hub = load_shape_from_png("Assets/hub.png")
-    hub_restricted = load_shape_from_png("Assets/hub_restricted.png")
-    hub_priority = load_shape_from_png("Assets/hub_priority.png")
-    hub_blocked = load_shape_from_png("Assets/hub_blocked.png")
 
 
 def signal_handler(sig, frame):
@@ -79,13 +44,7 @@ def _init_cfg(mapdata: MapData) -> RenderConfig:
         padd_x=padd_x,
         padd_y=padd_y,
         font=font,
-        shapes=Shapes(
-            drone=SHAPE.drone(),
-            hub=SHAPE.hub(),
-            hub_restricted=SHAPE.hub_restricted(),
-            hub_priority=SHAPE.hub_priority(),
-            hub_blocked=SHAPE.hub_blocked(),
-        )
+        shapes=Shapes
     )
 
 
@@ -113,8 +72,8 @@ if __name__ == "__main__":
         sys.exit(1)
 
     # title, grid and tiling
-    tile = load_shape_from_png("Assets/ground.png")
-    window.tilify(tile)
+    #tile = load_shape_from_png("Assets/ground.png")
+    #window.tilify(tile)
 
     solution = open("solution.txt").read()
 
