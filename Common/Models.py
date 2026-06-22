@@ -23,7 +23,7 @@ class HubBase(BaseModel):
 class ConnectionBase(BaseModel):
     hub_a: str
     hub_b: str
-    capacity: int = Field(default=1, gt=0)
+    link_capacity: int = Field(default=1, gt=0)
 
     @model_validator(mode="after")
     def no_self_loop(self):

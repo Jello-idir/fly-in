@@ -1,8 +1,8 @@
 import re
-from typing import Any
 from pydantic import BaseModel, Field, computed_field, model_validator
-from Common import HubType, ColorType, ZoneType
-from Common import DroneBase, HubBase, ConnectionBase, HubMetadata
+from Common import (
+    DroneBase, HubBase, ConnectionBase, HubMetadata, HubType, ColorType, ZoneType
+    )
 
 
 class MapData(BaseModel):
@@ -103,7 +103,6 @@ class MapData(BaseModel):
                     type=HubType(hub_type),
                     pos=(int(x), int(y)),
                     metadata=metadata,
-                    drones=[],
                 )
             except Exception as e:
                 raise ValueError(f"invalid hub data.\n\
@@ -122,7 +121,7 @@ class MapData(BaseModel):
             try:
                 connections.append(
                     ConnectionBase(hub_a=hub_a, hub_b=hub_b,
-                            **({"capacity": int(cap)} if cap else {})))
+                            **({"link_capacity": int(cap)} if cap else {})))
             except Exception as e:
                 raise ValueError(f"invalid connection data.\n\
                                 line: -> '{match.string}'\nerror: {e}")

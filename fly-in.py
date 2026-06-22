@@ -6,6 +6,7 @@ from MapParser import MapData
 from Tools import *
 from PixelFont import load_font
 from Common import RenderConfig, Shapes
+from GraphAlgo import Graph
 
 
 def signal_handler(sig, frame):
@@ -71,13 +72,12 @@ if __name__ == "__main__":
         sys.stderr.write(f"Error: {e}\n")
         sys.exit(1)
 
-    # title, grid and tiling
-    #tile = load_shape_from_png("Assets/ground.png")
-    #window.tilify(tile)
 
-    solution = open("solution.txt").read()
+    g = Graph(mapdata)
 
-    # mlx run
-    window.run(solution)
+
+    solution = g.solve_map()
+
+    window.run(solution=solution)
     #window.display(with_name=True, with_stats=True)
     # -----------

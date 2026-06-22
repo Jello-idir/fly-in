@@ -7,13 +7,12 @@ import re
 import random
 
 
-BG_DEPTH = 0
-LINES_DEPTH = 1
-TRAIL_DEPTH = 2
+CONNECTION_AND_TRAIL_DEPTH = 1
 HUB_DEPTH = 3
 STATS_DEPTH = 4
 DRONE_DEPTH = 5
 
+START_END_HUBS_DEPTH = 6
 
 TRAIL_OPACITY = 0xff
 
@@ -108,8 +107,7 @@ class MlxWindow:
         self.drones: dict[int, Drone] = {}
         self.cfg: RenderConfig = cfg
         self._solution = deque()
-        self.img_tile = mlx.mlx_new_image(self.mlx_ptr, self.cfg.width, self.cfg.height)
-        self.img_trails = mlx.mlx_new_image(self.mlx_ptr, self.cfg.width, self.cfg.height)
+        self.img_lines = mlx.mlx_new_image(self.mlx_ptr, self.cfg.width, self.cfg.height)
 
     @classmethod
     def from_map(cls, mapdata: MapData, cfg: RenderConfig):
@@ -133,7 +131,7 @@ class MlxWindow:
 
         # creating connections
         manager.connections = [
-            Connection(manager.hubs[conn.hub_a], manager.hubs[conn.hub_b], conn.capacity)
+            Connection(manager.hubs[conn.hub_a], manager.hubs[conn.hub_b], conn.link_capacity)
             for conn in mapdata.connections
         ]
         # attaching connections to hubs
@@ -142,24 +140,6 @@ class MlxWindow:
             conn.hub_b.connections.append(conn)
 
         return manager
-
-    def tilify(self, shape: set[tuple[int, int, int]]) -> None:
-        img_tile = mlx.mlx_new_image(self.mlx_ptr, self.cfg.width, self.cfg.height)
-        x_size = max(x[0] for x in shape) + 1
-        y_size = max(y[1] for y in shape) + 1
-        x_offset = y_offset = 0
-        for pixel in shape:
-            for y in range(y_offset, self.cfg.height, y_size):
-                for x in range(x_offset, self.cfg.width, x_size):
-                    if x + pixel[0] < self.cfg.width and y + pixel[1] < self.cfg.height:
-                        idx = ((y + pixel[1]) * img_tile.contents.width + (x + pixel[0])) * 4
-                        # pixel
-                        img_tile.contents.pixels[idx] = pixel[2] >> 24 & 0xff
-                        img_tile.contents.pixels[idx + 1] = pixel[2] >> 16 & 0xff
-                        img_tile.contents.pixels[idx + 2] = pixel[2] >> 8 & 0xff
-                        img_tile.contents.pixels[idx + 3] = pixel[2] & 0xff
-
-        self.img_tile = img_tile
 
     @staticmethod
     def fill_image(img, color: int):
@@ -220,22 +200,12 @@ class MlxWindow:
             pos = entity.pos
         mlx.mlx_image_to_window(self.mlx_ptr, entity.img, pos[0], pos[1])
         if isinstance(entity, HubStation):
-            entity.img.contents.instances[0].z = HUB_DEPTH
+            depth = HUB_DEPTH
+            if entity.type in (HubType.start_hub, HubType.end_hub):
+                depth = START_END_HUBS_DEPTH + len(self.drones)
+            entity.img.contents.instances[0].z = depth
         elif isinstance(entity, Drone):
-            entity.img.contents.instances[0].z = DRONE_DEPTH
-
-    def _attach_hub_drones(self, hub: HubStation) -> None:
-        idx = 0
-        for drone in hub.drones:
-            if idx >= 12:
-                idx = 11
-            offset_x = (idx % 3) * 16 + 10
-            offset_y = (idx // 3) * 11 + 10
-            idx += 1
-            posx = hub.pos[0] + offset_x
-            poxy = hub.pos[1] + offset_y
-            drone.pos = (posx, poxy)
-            self._attach_entity(drone, drone.pos)
+            entity.img.contents.instances[0].z = DRONE_DEPTH + entity.id
 
     def _draw_hub_name(self, hub: HubStation, uppercase: bool = True) -> None:
         name = hub.name
@@ -356,7 +326,7 @@ class MlxWindow:
             gradient = dx / dy if dy != 0 else 0
 
 
-    def _draw_edges(self, color: int = 0xFFFFFF50) -> None:
+    def _draw_connections(self, color: int = 0xFFFFFF50) -> None:
         for conn in self.connections:
             hub_a = conn.hub_a
             hub_b = conn.hub_b
@@ -368,14 +338,19 @@ class MlxWindow:
             y2 = hub_b.pos[1] + hub_b.size[1] // 2
 
             # thickness based on capacity
-            self._draw_line(self.img_tile, (x1, y1), (x2, y2), color=color, thickness=conn.capacity * 3)
+            self._draw_line(
+                self.img_lines,
+                (x1, y1), (x2, y2),
+                color=color,
+                thickness=min(conn.capacity, 8) * 3
+                )
 
             # write capacity
             capacity_text = str(conn.capacity)
             text_width = len(capacity_text) * 8
             text_x = int((x1 + x2) / 2 - text_width / 2 + 2)
             text_y = int((y1 + y2) / 2 - 3)
-            self._write_text(self.img_tile, capacity_text, (text_x, text_y))
+            self._write_text(self.img_lines, capacity_text, (text_x, text_y))
 
     def _draw_hub_stats(self, hub: HubStation, uppercase: bool = False) -> None:
         stats = f"{len(hub.drones)}/{hub.metadata.max_drones} {hub.metadata.zone.value}"
@@ -411,7 +386,7 @@ class MlxWindow:
 
                 # draw trail in img_trails
                 self._draw_line_no_thickness(
-                    self.img_trails,
+                    self.img_lines,
                     (
                         from_x + drone.size[0] // 2,
                         from_y + drone.size[1] // 2
@@ -496,7 +471,6 @@ class MlxWindow:
                     )
                 )
 
-        IS_QUEUE = True
         self._animate_drones()
 
     def _animate(self):
@@ -534,41 +508,36 @@ class MlxWindow:
 
     def run(
         self,
-        solution: str,
-        no_name: bool = False,
-        no_stats: bool = False,
+        solution: str | None = None,
     ) -> None:
 
-        # attach tile and background images to window
-        mlx.mlx_image_to_window(self.mlx_ptr, self.img_tile, 0, 0)
-        self.img_tile.contents.instances[0].z = BG_DEPTH
+        mlx.mlx_image_to_window(self.mlx_ptr, self.img_lines, 0, 0)
+        self.img_lines.contents.instances[0].z = CONNECTION_AND_TRAIL_DEPTH
 
-        mlx.mlx_image_to_window(self.mlx_ptr, self.img_trails, 0, 0)
-        self.img_trails.contents.instances[0].z = TRAIL_DEPTH
-
-        for drone in self.drones.values():
-            self._draw_entity(drone)
 
         for hub in self.hubs.values():
             self._draw_entity(hub)
             self._attach_entity(hub)
             self._draw_hub_name(hub)
             self._attach_hub_name(hub)
-            self._attach_hub_drones(hub)
 
-        self._draw_edges()
+        start_hub = next((hub for hub in self.hubs.values() if hub.type == HubType.start_hub), None)
 
+        if start_hub:
+            for drone in self.drones.values():
+                drone.pos = (
+                    start_hub.pos[0] + start_hub.img.contents.width // 2 - drone.size[0] // 2 + random.randint(-10, 10),
+                    start_hub.pos[1] + start_hub.img.contents.height // 2 - drone.size[1] // 2 + random.randint(-10, 10)
+                )
+                self._draw_entity(drone)
+                self._attach_entity(drone, drone.pos)
+        else:
+            raise ValueError("No start hub found in the map.")
 
-        if not no_stats:
-            self._draw_hubs_stats()
+        self._draw_connections()
 
-
-        # print(f"img_stats {self.img_stats.contents.instances[0].z}")
-        # print(f"img_tile {self.img_tile.contents.instances[0].z}")
-        # print(f"hub {self.hubs[next(iter(self.hubs))].img.contents.instances[0].z}")
-
-
-        self._solution.extend(solution.splitlines())
+        if solution:
+            self._solution.extend(solution.splitlines())
 
         self._hook_func_cb = ctypes.CFUNCTYPE(None, ctypes.c_void_p)(self._hook_func)
         self._loop_hook_cb = ctypes.CFUNCTYPE(None, ctypes.c_void_p)(self._loop_hook)

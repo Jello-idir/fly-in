@@ -9,8 +9,8 @@ MYPY_FLAGS = --warn-return-any --warn-unused-ignores --ignore-missing-imports --
 
 define check_venv
 	@if [ -z "$$VIRTUAL_ENV" ]; then \
-		echo -e "\033[33m!! WARNING\033[0m"; \
-		echo "   Not running inside a virtual environment. Activate one first."; \
+		echo -e "\033[33m!! WARNING"; \
+		echo -e " * \033[0mNot running inside a virtual environment. Activate one first."; \
 		exit 1; \
 	fi
 endef
@@ -27,8 +27,8 @@ re-install: requirements.txt
 run:
 	$(call check_venv)
 	@if [ ! -f ".deps_installed" ]; then \
-		echo -e "\033[33m!! WARNING\033[0m";\
-		echo "   Dependencies are not installed. run 'make install' to install dependencies."; \
+		echo -e "\033[33m!! WARNING";\
+		echo -e " * \033[0mDependencies are not installed. run 'make install' to install dependencies."; \
 	else \
 		$(PYTHON) $(MAIN_SCRIPT); \
 	fi
@@ -40,27 +40,27 @@ clean:
 
 lint-flake8:
 	@if [ -z "$$(command -v flake8)" ]; then \
-		echo -e "\033[33m!! WARNING\033[0m";\
-		echo "   flake8 is not installed. run 'make dev' to install development dependencies."; \
-		echo "   or activate a virtual envirement with flake8.."; \
+		echo -e "\033[33m!! WARNING";\
+		echo " * \033[0mflake8 is not installed. run 'make dev' to install development dependencies."; \
+		echo " * \033[0mor activate a virtual envirement with flake8.."; \
 	else \
 		flake8 .; \
 	fi
 
 lint-mypy:
 	@if [ -z "$$(command -v mypy)" ]; then \
-		echo -e "\033[33m!! WARNING\033[0m";\
-		echo "   mypy is not installed. run 'make dev' to install development dependencies."; \
-		echo "   or activate a virtual envirement with mypy.."; \
+		echo -e "\033[33m!! WARNING";\
+		echo " * \033[0mmypy is not installed. run 'make dev' to install development dependencies."; \
+		echo " * \033[0mor activate a virtual envirement with mypy.."; \
 	else \
 		mypy . $(MYPY_FLAGS); \
 	fi
 
 lint-mypy-strict:
 	@if [ -z "$$(command -v mypy)" ]; then \
-		echo -e "\033[33m!! WARNING\033[0m";\
-		echo "   mypy is not installed. run 'make dev' to install development dependencies."; \
-		echo "   or activate a virtual envirement with mypy.."; \
+		echo -e "\033[33m!! WARNING";\
+		echo " * \033[0mmypy is not installed. run 'make dev' to install development dependencies."; \
+		echo " * \033[0mor activate a virtual envirement with mypy.."; \
 	else \
 		mypy . --strict; \
 	fi
