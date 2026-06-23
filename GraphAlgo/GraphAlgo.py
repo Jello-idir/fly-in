@@ -1,15 +1,15 @@
 from MapParser import MapData
-from Common import Types
+from Common import ZoneType, HubType
 from collections import defaultdict
 from heapq import heappop, heappush
-from itertools import count
+from itertools import count, zip_longest
 
 class Node:
     def __init__(
             self, name: str,
             capacity: int,
-            hubtype: Types.HubType,
-            zonetype: Types.ZoneType
+            hubtype: HubType,
+            zonetype: ZoneType
             ):
         self.name = name
         self.capacity = capacity
@@ -23,15 +23,24 @@ class Edge:
             self,
             name: str,
             link_capacity: int,
-    ):
+            ):
         self.name = name
         self.capacity = link_capacity
+
+class Drone:
+    def __init__(
+            self,
+            id: int,
+            ):
+        self.id = id
+        self.path: list[Node | Edge] = []
 
 
 class Graph:
     def __init__(self, mapdata: MapData):
         self.nodes: dict[str, Node] = {}
         self.edges: dict[str, Edge] = {}
+        self.drons: dict[int, Drone] = {}
         for hub_name, hub in mapdata.hubs.items():
             self.nodes[hub_name] = Node(
                 name=hub_name,
@@ -51,7 +60,8 @@ class Graph:
 
             self.nodes[conn.hub_a].adjacents.append(self.nodes[conn.hub_b])
             self.nodes[conn.hub_b].adjacents.append(self.nodes[conn.hub_a])
-
+        for drone_id in mapdata.drones.keys():
+            self.drons[drone_id] = Drone(id=drone_id)
 
     def show_tree(self):
         blue = "\033[34m"
@@ -69,23 +79,10 @@ class Graph:
                 print(f" . {hub_a:>18}{yellow} -> {reset}{hub_b:18} {yellow}{"•" * edge.capacity}{reset}")
             print("-----------------------------------------------")
 
-    def solve_map(self) -> str:
-        start = next(node for node in self.nodes.values() if node.type == Types.HubType.start_hub)
-        end = next(node for node in self.nodes.values() if node.type == Types.HubType.end_hub)
-        shortest_path = self.dijkstra(start, end)
 
-        return self.path_to_str(shortest_path)
-
-    def path_to_str(self, path: list[Node]) -> str:
-        path_str = ""
-        for node in path:
-            path_str += f"D1-{node.name}\n"
-        print(path_str)
-        return path_str
-
-
-    def dijkstra(self, start: Node, end: Node) -> list[Node]:
-        counter = count()
+    def dijkstra(self, start: Node, end: Node) -> list[Node | Edge]:
+        counter = count(start=1,step=2)
+        #priority_counter = count(start=0, step=2)
         h = [(0, next(counter), start, [])]
         visited = set()
         while True:
@@ -98,9 +95,29 @@ class Graph:
             for adj in current.adjacents:
                 if adj in visited:
                     continue
-                if adj.zone == Types.ZoneType.blocked:
+                if adj.zone == ZoneType.blocked:
                     continue
-                cost = 2 if adj.zone == Types.ZoneType.restricted else 2
-                heappush(h, (len(path) + cost, next(counter), adj, path + [adj]))
+                if adj.zone == ZoneType.restricted:
+                    conn = next(edge for edge in current.conns if adj.name in edge.name)
+                    heappush(h, (len(path) + 2, next(counter), adj, path + [conn, adj]))
+                else:
+                    heappush(h, (len(path) + 1, next(counter), adj, path + [adj]))
 
+    def navigate_drones(self):
+        start_node = next(node for node in self.nodes.values() if node.type == HubType.start_hub)
+        end_node = next(node for node in self.nodes.values() if node.type == HubType.end_hub)
+        for drone in self.drons.values():
+            path = self.dijkstra(start_node, end_node)
+            drone.path = path
 
+    def solve_map(self) -> str:
+        solution_2d_list: list[list[str]] = []
+        solution_str: str = ""
+
+        for drone in self.drons.values():
+            solution_2d_list.append([f"D{drone.id}-{move.name}" for move in drone.path])
+
+        solution_str = "\n".join(" ".join(row) for row in zip_longest(*solution_2d_list, fillvalue=""))
+
+        print(solution_str)
+        return solution_str

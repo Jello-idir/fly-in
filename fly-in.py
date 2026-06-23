@@ -7,10 +7,10 @@ from Tools import *
 from PixelFont import load_font
 from Common import RenderConfig, Shapes
 from GraphAlgo import Graph
-
+import types
 
 def signal_handler(sig, frame):
-    mlx.mlx_terminate(window.mlx_ptr)
+    mlx.mlx_close_window(window.mlx_ptr)
 
 
 def _init_cfg(mapdata: MapData) -> RenderConfig:
@@ -75,7 +75,7 @@ if __name__ == "__main__":
 
     g = Graph(mapdata)
 
-
+    g.navigate_drones()
     solution = g.solve_map()
 
     window.run(solution=solution)
