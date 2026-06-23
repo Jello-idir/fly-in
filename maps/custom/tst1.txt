@@ -1,0 +1,17 @@
+nb_drones: 12
+
+start_hub: start 0 1 [color=white]
+
+hub: x 1 1 [color=red max_drones=12]
+hub: a 2 0 [color=green max_drones=12 zone=restricted]
+hub: b 3 0 [color=green max_drones=12]
+hub: c 2 2 [color=red max_drones=2]
+
+end_hub: goal 4 1 [color=white]
+
+connection: start-x [max_link_capacity=12]
+connection: x-a [max_link_capacity=12]
+connection: x-c [max_link_capacity=2]
+connection: a-b [max_link_capacity=12]
+connection: b-goal [max_link_capacity=12]
+connection: c-goal [max_link_capacity=12]
