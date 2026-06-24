@@ -54,6 +54,7 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal_handler)
     # ---------------------------------------
 
+    print("-" * 20)
     # parsing
     try:
         mapdata = MapData.from_file("maps/tst.txt")
@@ -75,8 +76,16 @@ if __name__ == "__main__":
 
     g = Graph(mapdata)
 
-    g.navigate_drones()
+    try:
+        g.navigate_drones()
+    except Exception as e:
+        sys.stderr.write(f"\033[31mError:\033[0m {e}\n")
+        sys.exit(1)
+
     solution = g.solve_map()
+    print("-" * 20)
+    print(f"turns: {len(solution.splitlines())}")
+    print("-" * 20)
 
     window.run(solution=solution)
     #window.display(with_name=True, with_stats=True)

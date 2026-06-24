@@ -67,13 +67,12 @@ class MapData(BaseModel):
             if hub_name in hubs:
                 raise ValueError(f"duplicate hub name '{hub_name}'.")
 
-            metadata = HubMetadata()
+            metadata = None
 
             if metadata_str:
                 metadata_str = metadata_str.strip()
                 if not re.fullmatch(r"(\w+=\w+\s*)*", metadata_str):
-                    raise ValueError(f"invalid metadata format.\n\
-                                    line: -> '{match.string}'")
+                    raise ValueError(f"invalid metadata format.\nline: -> '{match.string}'")
 
                 metadata_dict = dict(re.findall(r"(\w+)=(\w+)", metadata_str))
 
@@ -81,32 +80,39 @@ class MapData(BaseModel):
                     try:
                         metadata_dict["color"] = ColorType[metadata_dict["color"]]
                     except KeyError:
-                        raise ValueError(f"invalid color.\n\
-                                        line: -> '{match.string}'")
+                        raise ValueError(f"invalid color.\nline: -> '{match.string}'")
 
                 if "zone" in metadata_dict:
                     try:
                         metadata_dict["zone"] = ZoneType(metadata_dict["zone"])
                     except ValueError:
-                        raise ValueError(f"invalid zone.\n\
-                                        line: -> '{match.string}'")
+                        raise ValueError(f"invalid zone.\nline: -> '{match.string}'")
 
                 try:
                     metadata = HubMetadata(**metadata_dict)
                 except Exception as e:
-                    raise ValueError(f"invalid metadata.\n\
-                                    line: -> '{match.string}'")
+                    raise ValueError(f"invalid metadata.\nline: -> '{match.string}'")
+
+            if metadata is None:
+                metadata = HubMetadata()
+
+            try:
+                x, y = int(x), int(y)
+            except ValueError:
+                raise ValueError(f"invalid coordinates.\nline: -> '{match.string}'")
+
+            if (x, y) in (hub.pos for hub in hubs.values()):
+                raise ValueError(f"overlaping hubs ({x}, {y}).\nline: -> '{match.string}'")
 
             try:
                 hubs[hub_name] = HubBase(
                     name=hub_name,
                     type=HubType(hub_type),
-                    pos=(int(x), int(y)),
+                    pos=(x, y),
                     metadata=metadata,
                 )
             except Exception as e:
-                raise ValueError(f"invalid hub data.\n\
-                                line: -> '{match.string}'\nerror: {e}")
+                raise ValueError(f"invalid hub data.\nline: -> '{match.string}'\nerror: {e}")
 
         def _handle_connection(match: re.Match) -> None:
 
@@ -123,8 +129,7 @@ class MapData(BaseModel):
                     ConnectionBase(hub_a=hub_a, hub_b=hub_b,
                             **({"link_capacity": int(cap)} if cap else {})))
             except Exception as e:
-                raise ValueError(f"invalid connection data.\n\
-                                line: -> '{match.string}'\nerror: {e}")
+                raise ValueError(f"invalid connection data.\nline: -> '{match.string}'\nerror: {e}")
 
 
         m_drones = re.compile(r"nb_drones\s*:\s*(\d+)\s*$")
