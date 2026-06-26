@@ -11,9 +11,9 @@ CONNECTION_AND_TRAIL_DEPTH = 1
 HUB_DEPTH = 3
 STATS_DEPTH = 4
 DRONE_DEPTH = 5
-
 START_END_HUBS_DEPTH = 6
 
+RANDOM_AMOUNT = 5
 TRAIL_OPACITY = 0xff
 
 ANIMATING = 0
@@ -258,7 +258,7 @@ class MlxWindow:
             x += x_inc
             y += y_inc
 
-    def _draw_line_no_thickness(self, img, start: tuple[int, int], end: tuple[int, int], color: int = 0xffffffaa) -> None:
+    def _draw_line(self, img, start: tuple[int, int], end: tuple[int, int], color: int = 0xffffffaa) -> None:
         x1, y1 = start
         x2, y2 = end
 
@@ -281,51 +281,6 @@ class MlxWindow:
             x += x_inc
             y += y_inc
 
-    def _draw_line_anti_aliased(self, img, start: tuple[int, int], end: tuple[int, int], color: int = 0xffffffaa) -> None:
-        # Xiaolin Wu's line algorithm
-        def plot(x, y, c):
-            if 0 <= x < img.contents.width and 0 <= y < img.contents.height:
-                idx = (int(y) * img.contents.width + int(x)) * 4
-                img.contents.pixels[idx] = color >> 24 & 0xff
-                img.contents.pixels[idx + 1] = color >> 16 & 0xff
-                img.contents.pixels[idx + 2] = color >> 8 & 0xff
-                img.contents.pixels[idx + 3] = int((color & 0xff) * c)
-
-        x1, y1 = start
-        x2, y2 = end
-
-        dx = x2 - x1
-        dy = y2 - y1
-
-        if abs(dx) > abs(dy):
-            if x1 > x2:
-                x1, y1, x2, y2 = x2, y2, x1, y1
-            gradient = dy / dx if dx != 0 else 0
-
-            # handle first endpoint
-            xend = round(x1)
-            yend = y1 + gradient * (xend - x1)
-            plot(xend, int(yend), (1 - (yend - int(yend))))
-            plot(xend, int(yend) + 1, (yend - int(yend)))
-            intery = yend + gradient
-
-            # handle second endpoint
-            xend = round(x2)
-            yend = y2 + gradient * (xend - x2)
-            plot(xend, int(yend), (1 - (yend - int(yend))))
-            plot(xend, int(yend) + 1, (yend - int(yend)))
-
-            # main loop
-            for x in range(int(x1) + 1, int(x2)):
-                plot(x, int(intery), (1 - (intery - int(intery))))
-                plot(x, int(intery) + 1, (intery - int(intery)))
-                intery += gradient
-        else:
-            if y1 > y2:
-                x1, y1, x2, y2 = x2, y2, x1, y1
-            gradient = dx / dy if dy != 0 else 0
-
-
     def _draw_connections(self, color: int = 0xFFFFFF50) -> None:
         for conn in self.connections:
             hub_a = conn.hub_a
@@ -342,7 +297,6 @@ class MlxWindow:
                 self.img_lines,
                 (x1, y1), (x2, y2),
                 color=color,
-                thickness=min(conn.capacity, 8) * 3
                 )
 
             # write capacity
@@ -385,7 +339,7 @@ class MlxWindow:
                 drone.img.contents.instances[0].y = to_y
 
                 # draw trail in img_trails
-                self._draw_line_no_thickness(
+                self._draw_line(
                     self.img_lines,
                     (
                         from_x + drone.size[0] // 2,
@@ -458,18 +412,19 @@ class MlxWindow:
                     )
             # remove drone from prev location
             drone.location.drones.remove(drone)
+            # add drone to new location
             dest.drones.append(drone)
+
+            # add randomness to the drone position if it's going to a hub
+            randomamount = RANDOM_AMOUNT if isinstance(dest, HubStation) else RANDOM_AMOUNT // 2
+            random_x = random.randint(-randomamount, randomamount)
+            random_y = random.randint(-randomamount, randomamount)
+            posx = end_pos[0] + random_x
+            posy = end_pos[1] + random_y
+
+            # append drone to the queue for animation
             DRONES_QUEUE.append(
-                    (
-                        drone,
-                        start_pos,
-                        (
-                            end_pos[0] + random.randint(-10, 10),
-                            end_pos[1] + random.randint(-10, 10)
-                        ),
-                        dest
-                    )
-                )
+                    (drone, start_pos, (posx, posy), dest))
 
         self._animate_drones()
 

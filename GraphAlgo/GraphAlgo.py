@@ -22,7 +22,7 @@ class Node:
         self.capacity = capacity
         self.type = hubtype
         self.zone = zonetype
-        self.conns: list[Edge] = []
+        self.cnxs: list[Edge] = []
         self.adjacents: list[Node] = []
 
 class Edge:
@@ -71,8 +71,8 @@ class Graph:
                 node_b=self.nodes[conn.hub_b]
             )
             self.edges[edge_name] = edge
-            self.nodes[conn.hub_a].conns.append(edge)
-            self.nodes[conn.hub_b].conns.append(edge)
+            self.nodes[conn.hub_a].cnxs.append(edge)
+            self.nodes[conn.hub_b].cnxs.append(edge)
 
             self.nodes[conn.hub_a].adjacents.append(self.nodes[conn.hub_b])
             self.nodes[conn.hub_b].adjacents.append(self.nodes[conn.hub_a])
@@ -91,8 +91,10 @@ class Graph:
                 cost, _, current, path = heappop(h)
             except IndexError:
                 raise ValueError(f"No path found for drone {drone.id} from {start.name} to {end.name}.")
+
             if current == end:
                 return path
+
             state = (current.name, cost)
             if state in visited:
                 continue
@@ -108,56 +110,74 @@ class Graph:
                 if adj in path:
                     continue
 
-                adj_capp = this_turn.get(adj, adj.capacity)
-                conn = next((c for c in current.conns if (c.node_a == adj or c.node_b == adj)))
-                conn_capp = this_turn.get(conn, conn.capacity)
+                adj_cap = this_turn.get(adj, adj.capacity)
+                cnx = next((c for c in current.cnxs if (c.node_a == adj or c.node_b == adj)))
+                cnx_cap = this_turn.get(cnx, cnx.capacity)
 
-                if adj.type == HubType.end_hub and adj_capp <= 0:
-                    adj_capp = conn_capp
+                if adj.type == HubType.end_hub and adj_cap <= 0:
+                    adj_cap = cnx_cap
 
-                if adj_capp <= 0 or conn_capp <= 0:
+                if adj_cap <= 0 or cnx_cap <= 0:
                     needs_wait = True
+
                 else:
                     if adj.zone == ZoneType.restricted:
-                        heappush(h, (cost + 2, next(counter), adj, path + [conn, adj]))
+                        heappush(h, (cost + 2, next(counter), adj, path + [cnx, adj]))
                     else:
                         heappush(h, (cost + 1, next(counter), adj, path + [adj]))
             if needs_wait:
                 heappush(h, (cost + 1, next(counter), current, path + [current]))
 
-    def navigate_drones(self):
+    def navigate_drones(self, debug: bool = False) -> None:
         start_node = next(node for node in self.nodes.values() if node.type == HubType.start_hub)
         end_node = next(node for node in self.nodes.values() if node.type == HubType.end_hub)
 
-        def list_of_nodes_to_edges(path: list[Node | Edge]) -> list[Edge]:
-            list_of_edges: list[Edge] = []
+        def path_to_edges_path(path: list[Node | Edge]) -> list[Edge]:
+            list_of_edges: list[Edge | None] = []
             i = 0
             while i < len(path) - 1:
                 src = path[i]
                 dst = path[i + 1]
                 if isinstance(src, Node) and isinstance(dst, Node):
-                    conn = next((c for c in src.conns if (c.node_a == dst or c.node_b == dst)))
+                    if src == dst:
+                        conn = None
+                    else:
+                        conn = next((c for c in src.cnxs if (c.node_a == dst or c.node_b == dst)))
                     list_of_edges.append(conn)
                 elif isinstance(src, Node) and isinstance(dst, Edge):
                     list_of_edges.append(dst)
+                elif isinstance(src, Edge) and isinstance(dst, Node):
+                    list_of_edges.append(None)
+
                 i += 1
-            print("-" * 20)
-            print(*[x.name for x in path])
-            print(*[x.name for x in list_of_edges])
-            print("-" * 20)
             return list_of_edges
 
         for drone in self.drons.values():
-            path = self.dijkstra(start_node, end_node, drone)
-            drone.path = path
-            list_of_edges = list_of_nodes_to_edges(path)
 
-            for turn_id, node_or_edge in enumerate(path):
+            if debug:
+                print(f"\n\n{BLUE}Reducing capacity for D{drone.id}{RESET}")
+                print("-" * 20)
+
+            nodes_path = self.dijkstra(start_node, end_node, drone)
+            edges_path = path_to_edges_path(nodes_path)
+
+            drone.path = nodes_path
+
+            if debug:
+                print("".join([f"{x:<12}" for x in range(len(nodes_path))]))
+                print(f"{"".join([f"{x.name:12}" for x in nodes_path])}")
+            for turn_id, node in enumerate(nodes_path):
                 if turn_id not in self.capacity_changes:
                     self.capacity_changes[turn_id] = {}
-                self.capacity_changes[turn_id][node_or_edge] = self.capacity_changes[turn_id].get(node_or_edge, node_or_edge.capacity) - 1
+                if isinstance(node, Edge):
+                    node = nodes_path[turn_id + 1]
+                self.capacity_changes[turn_id][node] = self.capacity_changes[turn_id].get(node, node.capacity) - 1
 
-            for turn_id, edge in enumerate(list_of_edges):
+            if debug:
+                print("".join([f"{x.name:12}" if x is not None else f"{YELLOW}{'none':12}{RESET}" for x in edges_path]))
+            for turn_id, edge in enumerate(edges_path):
+                if not edge:
+                    continue
                 turn_id = turn_id + 1
                 if turn_id not in self.capacity_changes:
                     self.capacity_changes[turn_id] = {}

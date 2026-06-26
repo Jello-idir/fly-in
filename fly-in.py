@@ -53,8 +53,8 @@ if __name__ == "__main__":
     # Set up signal handler for graceful exit on Ctrl+C
     signal.signal(signal.SIGINT, signal_handler)
     # ---------------------------------------
+    multiplier = 2
 
-    print("-" * 20)
     # parsing
     try:
         mapdata = MapData.from_file("maps/tst.txt")
@@ -62,6 +62,12 @@ if __name__ == "__main__":
         sys.stderr.write(f"\033[31mError:\033[0m {e}\n")
         sys.exit(1)
     #-------------------------------------
+
+    for conn in mapdata.connections:
+        conn.link_capacity *= multiplier
+    for hub in mapdata.hubs.values():
+        hub.metadata.max_drones *= multiplier
+
 
     # config init
     cfg = _init_cfg(mapdata)
@@ -83,9 +89,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     solution = g.solve_map()
-    print("-" * 20)
     print(f"turns: {len(solution.splitlines())}")
-    print("-" * 20)
 
     window.run(solution=solution)
     #window.display(with_name=True, with_stats=True)
