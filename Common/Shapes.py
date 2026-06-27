@@ -18,11 +18,12 @@ def load_shape_from_png(path: str) -> set[tuple[int, int, int]]:
 class Shapes(set[tuple[int, int, int]], Enum):
     def __call__(self):
         return self.value
-    drone = load_shape_from_png("Assets/drone2.png")
+    drone = load_shape_from_png("Assets/drone.png")
     hub = load_shape_from_png("Assets/hub.png")
     hub_restricted = load_shape_from_png("Assets/hub_restricted.png")
     hub_priority = load_shape_from_png("Assets/hub_priority.png")
     hub_blocked = load_shape_from_png("Assets/hub_blocked.png")
+    hub_start = load_shape_from_png("Assets/hub_start.png")
 
     def _size(self):
         shape = self.value

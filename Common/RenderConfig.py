@@ -8,11 +8,6 @@ class RenderConfig:
     width: int
     height: int
     cell: int
-    cell_abs: int
-    cell_w: int
-    cell_h: int
-    mid_h: int
-    mid_w: int
     space: int
     min_x: int
     min_y: int

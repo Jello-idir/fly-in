@@ -4,7 +4,6 @@ from collections import defaultdict
 from heapq import heappop, heappush
 from itertools import count, zip_longest
 
-
 BLUE = "\033[34m"
 RED = "\033[31m"
 GREEN = "\033[32m"
@@ -13,12 +12,7 @@ RESET = "\033[0m"
 
 
 class Node:
-    def __init__(
-            self, name: str,
-            capacity: int,
-            hubtype: HubType,
-            zonetype: ZoneType
-            ):
+    def __init__(self, name: str, capacity: int, hubtype: HubType, zonetype: ZoneType):
         self.name = name
         self.capacity = capacity
         self.type = hubtype
@@ -26,24 +20,20 @@ class Node:
         self.cnxs: list[Edge] = []
         self.adjacents: list[Node] = []
 
+
 class Edge:
-    def __init__(
-            self,
-            name: str,
-            link_capacity: int,
-            node_a: Node,
-            node_b: Node
-            ):
+    def __init__(self, name: str, link_capacity: int, node_a: Node, node_b: Node):
         self.name = name
         self.capacity = link_capacity
         self.node_a = node_a
         self.node_b = node_b
 
+
 class Drone:
     def __init__(
-            self,
-            id: int,
-            ):
+        self,
+        id: int,
+    ):
         self.id = id
         self.path: list[Node | Edge] = []
 
@@ -60,7 +50,7 @@ class Graph:
                 name=hub_name,
                 capacity=hub.metadata.max_drones,
                 hubtype=hub.type,
-                zonetype=hub.metadata.zone
+                zonetype=hub.metadata.zone,
             )
 
         for conn in mapdata.connections:
@@ -69,7 +59,7 @@ class Graph:
                 name=edge_name,
                 link_capacity=conn.link_capacity,
                 node_a=self.nodes[conn.hub_a],
-                node_b=self.nodes[conn.hub_b]
+                node_b=self.nodes[conn.hub_b],
             )
             self.edges[edge_name] = edge
             self.nodes[conn.hub_a].cnxs.append(edge)
@@ -81,17 +71,20 @@ class Graph:
         for drone_id in mapdata.drones.keys():
             self.drons[drone_id] = Drone(id=drone_id)
 
-
     def dijkstra(self, start: Node, end: Node, drone: Drone) -> list[Node | Edge]:
-        counter = count(start=1,step=2)
-        #priority_counter = count(start=0, step=2)
-        h = [(1, next(counter), start, [start])]
+        counter = count(start=1, step=2)
+        # priority_counter = count(start=0, step=2)
+        h: list[tuple[int, int, int, Node, list[Node | Edge]]] = [
+            (1, 0, next(counter), start, [start])
+        ]
         visited = set()
         while True:
             try:
-                cost, _, current, path = heappop(h)
+                cost, prior_count, _, current, path = heappop(h)
             except IndexError:
-                raise ValueError(f"No path found for drone {drone.id} from {start.name} to {end.name}.")
+                raise ValueError(
+                    f"No path found for drone {drone.id} from {start.name} to {end.name}."
+                )
 
             if current == end:
                 return path
@@ -107,18 +100,26 @@ class Graph:
 
             for adj in current.adjacents:
 
+                if adj.zone == ZoneType.priority:
+                    prior_count -= 1
+
                 if adj.zone == ZoneType.blocked:
                     continue
 
                 if adj in path:
                     continue
 
-                cnx = next((c for c in current.cnxs if (c.node_a == adj or c.node_b == adj)))
+                cnx = next(
+                    (c for c in current.cnxs if (c.node_a == adj or c.node_b == adj))
+                )
                 cnx_cap = this_turn.get(cnx, cnx.capacity)
                 adj_cap = this_turn.get(adj, adj.capacity)
 
                 if adj.zone == ZoneType.restricted:
-                    adj_cap = self.capacity_changes.get(cost + 1, {}).get(adj, adj.capacity)
+                    next_adj_cap = self.capacity_changes.get(cost + 1, {}).get(
+                        adj, adj.capacity
+                    )
+                    adj_cap = min(adj_cap, next_adj_cap)
 
                 if adj.type == HubType.end_hub and adj_cap <= 0:
                     adj_cap = cnx_cap
@@ -128,17 +129,33 @@ class Graph:
 
                 else:
                     if adj.zone == ZoneType.restricted:
-                        heappush(h, (cost + 2, next(counter), adj, path + [cnx, adj]))
+                        heappush(
+                            h,
+                            (
+                                cost + 2,
+                                prior_count,
+                                next(counter),
+                                adj,
+                                path + [cnx, adj],
+                            ),
+                        )
                     else:
-                        heappush(h, (cost + 1, next(counter), adj, path + [adj]))
+                        heappush(
+                            h, (cost + 1, prior_count, next(counter), adj, path + [adj])
+                        )
             if needs_wait:
-                heappush(h, (cost + 1, next(counter), current, path + [current]))
+                heappush(
+                    h, (cost + 1, prior_count, next(counter), current, path + [current])
+                )
 
     def navigate_drones(self, debug: bool = False) -> None:
 
-
-        start_node = next(node for node in self.nodes.values() if node.type == HubType.start_hub)
-        end_node = next(node for node in self.nodes.values() if node.type == HubType.end_hub)
+        start_node = next(
+            node for node in self.nodes.values() if node.type == HubType.start_hub
+        )
+        end_node = next(
+            node for node in self.nodes.values() if node.type == HubType.end_hub
+        )
 
         def path_to_edges_path(path: list[Node | Edge]) -> list[Edge]:
             list_of_edges: list[Edge | None] = []
@@ -150,12 +167,18 @@ class Graph:
                     if src == dst:
                         conn = None
                     else:
-                        conn = next((c for c in src.cnxs if (c.node_a == dst or c.node_b == dst)))
+                        conn = next(
+                            (
+                                c
+                                for c in src.cnxs
+                                if (c.node_a == dst or c.node_b == dst)
+                            )
+                        )
                     list_of_edges.append(conn)
                 elif isinstance(src, Node) and isinstance(dst, Edge):
                     list_of_edges.append(dst)
                 elif isinstance(src, Edge) and isinstance(dst, Node):
-                    list_of_edges.append(None)
+                    list_of_edges.append(src)
                 i += 1
             return list_of_edges
 
@@ -182,10 +205,23 @@ class Graph:
                     continue
                 if turn_id not in self.capacity_changes:
                     self.capacity_changes[turn_id] = {}
-                self.capacity_changes[turn_id][node] = self.capacity_changes[turn_id].get(node, node.capacity) - 1
+                self.capacity_changes[turn_id][node] = (
+                    self.capacity_changes[turn_id].get(node, node.capacity) - 1
+                )
 
             if debug:
-                print("".join([f"{x.name:{PADD}}" if x is not None else f"{YELLOW}{'none':{PADD}}{RESET}" for x in edges_path]))
+                print(
+                    "".join(
+                        [
+                            (
+                                f"{x.name:{PADD}}"
+                                if x is not None
+                                else f"{YELLOW}{'none':{PADD}}{RESET}"
+                            )
+                            for x in edges_path
+                        ]
+                    )
+                )
 
             for turn_id, edge in enumerate(edges_path):
                 if not edge:
@@ -193,20 +229,25 @@ class Graph:
                 turn_id = turn_id + 1
                 if turn_id not in self.capacity_changes:
                     self.capacity_changes[turn_id] = {}
-                self.capacity_changes[turn_id][edge] = self.capacity_changes[turn_id].get(edge, edge.capacity) - 1
+                self.capacity_changes[turn_id][edge] = (
+                    self.capacity_changes[turn_id].get(edge, edge.capacity) - 1
+                )
 
             if debug:
                 print("----" * 10 + "\n")
-
 
     def solve_map(self) -> str:
         solution_2d_list: list[list[str]] = []
         solution_str: str = ""
 
         for drone in self.drons.values():
-            solution_2d_list.append([f"D{drone.id}-{move.name}" for move in drone.path[1:]])
+            solution_2d_list.append(
+                [f"D{drone.id}-{move.name}" for move in drone.path[1:]]
+            )
 
-        solution_str = "\n".join(" ".join(row) for row in zip_longest(*solution_2d_list, fillvalue=""))
+        solution_str = "\n".join(
+            " ".join(row) for row in zip_longest(*solution_2d_list, fillvalue="")
+        )
 
         # new_sol = ""
         # for line in solution_str.splitlines():

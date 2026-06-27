@@ -16,42 +16,30 @@ def _init_render_cfg(mapdata: MapData) -> RenderConfig:
 
     min_x, max_x, min_y, max_y = mapdata.bounding_box
 
-    grid_width = max_x - min_x + 1
-    grid_height = max_y - min_y + 1
+    map_width = max_x - min_x + 1
+    map_height = max_y - min_y + 1
 
     shapes = Shapes
-
     hub_size = max(shapes.hub._size())
 
-    space = 1
-    padd_x = 1
-    padd_y = 1
 
-    space = space + 1
+    space = hub_size
+    padd_x = 20
+    padd_y = 30
 
-    abs_grid_width = grid_width * space - space + 1 + padd_x * 2
-    abs_grid_height = grid_height * space - space + 1 + padd_y * 2
-
-    abs_width = abs_grid_width * hub_size + padd_x * 2
-    abs_height = abs_grid_height * hub_size + padd_y * 2
-
-    font = load_font()
+    abs_width = map_width * hub_size + space * (map_width - 1) + padd_x * 2
+    abs_height = map_height * hub_size + space * (map_height - 1) + padd_y * 2
 
     return RenderConfig(
         width=abs_width,
         height=abs_height,
         cell=hub_size,
-        cell_abs=hub_size,
-        cell_w=None,
-        cell_h=None,
-        mid_h=abs_grid_height // 2,
-        mid_w=abs_grid_width // 2,
         space=space,
-        min_x=min_x * space,
-        min_y=min_y * space,
+        min_x=min_x,
+        min_y=min_y,
         padd_x=padd_x,
         padd_y=padd_y,
-        font=font,
+        font=load_font(),
         shapes=shapes
     )
 
@@ -73,8 +61,8 @@ if __name__ == "__main__":
 
     for conn in mapdata.connections:
         conn.link_capacity *= multiplier
-    for hub in mapdata.hubs.values():
-        hub.metadata.max_drones *= multiplier
+    # for hub in mapdata.hubs.values():
+    #     hub.metadata.max_drones *= multiplier
 
 
 
