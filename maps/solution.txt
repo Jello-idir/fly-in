@@ -1,0 +1,8 @@
+D1-x D2-x D3-x D4-x D5-x D6-x
+D1-bot D2-center D3-center D4-top D5-top D7-x D8-x D9-x D10-x D11-x
+D1-bot-gate D2-center-gate D3-center-gate D6-bot D7-center D8-center D9-top D12-x
+D1-gate D2-gate D3-gate D4-top-gate D5-top-gate D6-bot-gate D10-bot D11-center D12-center
+D4-gate D5-gate D6-gate D1-end D2-end D3-end D7-center-gate D8-center-gate D9-top-gate
+D7-gate D8-gate D9-gate D4-end D5-end D6-end D10-bot-gate D11-center-gate D12-center-gate
+D10-gate D11-gate D12-gate D7-end D8-end D9-end
+D10-end D11-end D12-end

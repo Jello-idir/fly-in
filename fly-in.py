@@ -3,7 +3,6 @@ import sys
 from Visualize import *
 from MLX.libmlx import *
 from MapParser import MapData
-from Tools import *
 from PixelFont import load_font
 from Common import RenderConfig, Shapes
 from GraphAlgo import Graph
@@ -13,39 +12,47 @@ def signal_handler(sig, frame):
     mlx.mlx_close_window(window.mlx_ptr)
 
 
-def _init_cfg(mapdata: MapData) -> RenderConfig:
+def _init_render_cfg(mapdata: MapData) -> RenderConfig:
+
     min_x, max_x, min_y, max_y = mapdata.bounding_box
-    size_x = max_x - min_x + 1
-    size_y = max_y - min_y + 1
-    cell = 40
-    space = 3
-    padd_x = 2
-    padd_y = 2
+
+    grid_width = max_x - min_x + 1
+    grid_height = max_y - min_y + 1
+
+    shapes = Shapes
+
+    hub_size = max(shapes.hub._size())
+
+    space = 1
+    padd_x = 1
+    padd_y = 1
 
     space = space + 1
-    cell_w = size_x * space - space + 1 + padd_x * 2
-    cell_h = size_y * space - space + 1 + padd_y * 2
-    width = cell_w * cell
-    height = cell_h * cell
+
+    abs_grid_width = grid_width * space - space + 1 + padd_x * 2
+    abs_grid_height = grid_height * space - space + 1 + padd_y * 2
+
+    abs_width = abs_grid_width * hub_size + padd_x * 2
+    abs_height = abs_grid_height * hub_size + padd_y * 2
 
     font = load_font()
 
     return RenderConfig(
-        width=width,
-        height=height,
-        cell=cell,
-        cell_abs=cell,
-        cell_w=cell_w,
-        cell_h=cell_h,
-        mid_h=cell_h // 2,
-        mid_w=cell_w // 2,
+        width=abs_width,
+        height=abs_height,
+        cell=hub_size,
+        cell_abs=hub_size,
+        cell_w=None,
+        cell_h=None,
+        mid_h=abs_grid_height // 2,
+        mid_w=abs_grid_width // 2,
         space=space,
         min_x=min_x * space,
         min_y=min_y * space,
         padd_x=padd_x,
         padd_y=padd_y,
         font=font,
-        shapes=Shapes
+        shapes=shapes
     )
 
 
@@ -53,15 +60,16 @@ if __name__ == "__main__":
     # Set up signal handler for graceful exit on Ctrl+C
     signal.signal(signal.SIGINT, signal_handler)
     # ---------------------------------------
-    multiplier = 2
 
     # parsing
     try:
-        mapdata = MapData.from_file("maps/tst.txt")
+        mapdata = MapData.from_file("maps/blueprint.txt")
     except Exception as e:
         sys.stderr.write(f"\033[31mError:\033[0m {e}\n")
         sys.exit(1)
     #-------------------------------------
+
+    multiplier = 1
 
     for conn in mapdata.connections:
         conn.link_capacity *= multiplier
@@ -69,27 +77,22 @@ if __name__ == "__main__":
         hub.metadata.max_drones *= multiplier
 
 
+
     # config init
-    cfg = _init_cfg(mapdata)
+    cfg = _init_render_cfg(mapdata)
 
     # mlx window init
-    try:
-        window = MlxWindow.from_map(mapdata, cfg)
-    except Exception as e:
-        sys.stderr.write(f"Error: {e}\n")
-        sys.exit(1)
-
+    window = MlxWindow.from_map(mapdata, cfg)
 
     g = Graph(mapdata)
 
-    try:
+    if True:
         g.navigate_drones()
-    except Exception as e:
-        sys.stderr.write(f"\033[31mError:\033[0m {e}\n")
-        sys.exit(1)
+        solution = g.solve_map()
+    else:
+        solution = open("maps/solution.txt").read()
 
-    solution = g.solve_map()
-    print(f"turns: {len(solution.splitlines())}")
+    print(len(solution.splitlines()))
 
     window.run(solution=solution)
     #window.display(with_name=True, with_stats=True)

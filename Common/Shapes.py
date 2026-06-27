@@ -23,3 +23,9 @@ class Shapes(set[tuple[int, int, int]], Enum):
     hub_restricted = load_shape_from_png("Assets/hub_restricted.png")
     hub_priority = load_shape_from_png("Assets/hub_priority.png")
     hub_blocked = load_shape_from_png("Assets/hub_blocked.png")
+
+    def _size(self):
+        shape = self.value
+        max_x = max(point[0] for point in shape)
+        max_y = max(point[1] for point in shape)
+        return max_x + 1, max_y + 1

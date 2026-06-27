@@ -11,6 +11,7 @@ GREEN = "\033[32m"
 YELLOW = "\033[33m"
 RESET = "\033[0m"
 
+
 class Node:
     def __init__(
             self, name: str,
@@ -105,14 +106,19 @@ class Graph:
             needs_wait = False
 
             for adj in current.adjacents:
+
                 if adj.zone == ZoneType.blocked:
                     continue
+
                 if adj in path:
                     continue
 
-                adj_cap = this_turn.get(adj, adj.capacity)
                 cnx = next((c for c in current.cnxs if (c.node_a == adj or c.node_b == adj)))
                 cnx_cap = this_turn.get(cnx, cnx.capacity)
+                adj_cap = this_turn.get(adj, adj.capacity)
+
+                if adj.zone == ZoneType.restricted:
+                    adj_cap = self.capacity_changes.get(cost + 1, {}).get(adj, adj.capacity)
 
                 if adj.type == HubType.end_hub and adj_cap <= 0:
                     adj_cap = cnx_cap
@@ -129,6 +135,8 @@ class Graph:
                 heappush(h, (cost + 1, next(counter), current, path + [current]))
 
     def navigate_drones(self, debug: bool = False) -> None:
+
+
         start_node = next(node for node in self.nodes.values() if node.type == HubType.start_hub)
         end_node = next(node for node in self.nodes.values() if node.type == HubType.end_hub)
 
@@ -148,33 +156,37 @@ class Graph:
                     list_of_edges.append(dst)
                 elif isinstance(src, Edge) and isinstance(dst, Node):
                     list_of_edges.append(None)
-
                 i += 1
             return list_of_edges
 
         for drone in self.drons.values():
 
             if debug:
-                print(f"\n\n{BLUE}Reducing capacity for D{drone.id}{RESET}")
-                print("-" * 20)
+                print()
+                print(f"-- {BLUE}drone {drone.id} resirvation{RESET} --")
 
             nodes_path = self.dijkstra(start_node, end_node, drone)
             edges_path = path_to_edges_path(nodes_path)
 
             drone.path = nodes_path
 
+            # padd should be the longest string + 2
+            PADD = max(len(x.name) for x in edges_path if x is not None) + 3
+
             if debug:
-                print("".join([f"{x:<12}" for x in range(len(nodes_path))]))
-                print(f"{"".join([f"{x.name:12}" for x in nodes_path])}")
+                print("".join([f"{x:<{PADD}}" for x in range(len(nodes_path))]))
+                print(f"{"".join([f"{x.name:{PADD}}" for x in nodes_path])}")
+
             for turn_id, node in enumerate(nodes_path):
+                if isinstance(node, Edge):
+                    continue
                 if turn_id not in self.capacity_changes:
                     self.capacity_changes[turn_id] = {}
-                if isinstance(node, Edge):
-                    node = nodes_path[turn_id + 1]
                 self.capacity_changes[turn_id][node] = self.capacity_changes[turn_id].get(node, node.capacity) - 1
 
             if debug:
-                print("".join([f"{x.name:12}" if x is not None else f"{YELLOW}{'none':12}{RESET}" for x in edges_path]))
+                print("".join([f"{x.name:{PADD}}" if x is not None else f"{YELLOW}{'none':{PADD}}{RESET}" for x in edges_path]))
+
             for turn_id, edge in enumerate(edges_path):
                 if not edge:
                     continue
@@ -182,6 +194,9 @@ class Graph:
                 if turn_id not in self.capacity_changes:
                     self.capacity_changes[turn_id] = {}
                 self.capacity_changes[turn_id][edge] = self.capacity_changes[turn_id].get(edge, edge.capacity) - 1
+
+            if debug:
+                print("----" * 10 + "\n")
 
 
     def solve_map(self) -> str:
@@ -193,4 +208,7 @@ class Graph:
 
         solution_str = "\n".join(" ".join(row) for row in zip_longest(*solution_2d_list, fillvalue=""))
 
+        # new_sol = ""
+        # for line in solution_str.splitlines():
+        #     new_sol + line.strip()
         return solution_str

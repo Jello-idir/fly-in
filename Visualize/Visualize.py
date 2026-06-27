@@ -210,7 +210,7 @@ class MlxWindow:
     def _draw_hub_name(self, hub: HubStation, uppercase: bool = True) -> None:
         name = hub.name
         name = name.upper() if uppercase else name.title()
-        hub.img_name = mlx.mlx_new_image(self.mlx_ptr, len(name) * 8, 10)
+        hub.img_name = mlx.mlx_new_image(self.mlx_ptr, len(name) * 6, 10)
         self._write_text(hub.img_name, name, (0, 0))
 
     def _attach_hub_name(self, hub: HubStation) -> None:
@@ -258,29 +258,6 @@ class MlxWindow:
             x += x_inc
             y += y_inc
 
-    def _draw_line(self, img, start: tuple[int, int], end: tuple[int, int], color: int = 0xffffffaa) -> None:
-        x1, y1 = start
-        x2, y2 = end
-
-        dx = x2 - x1
-        dy = y2 - y1
-        steps = max(abs(dx), abs(dy))
-        if steps == 0:
-            return
-        x_inc = dx / steps
-        y_inc = dy / steps
-
-        x, y = x1, y1
-        for _ in range(steps):
-            idx = (int(y) * img.contents.width + int(x)) * 4
-            img.contents.pixels[idx] = color >> 24 & 0xff
-            img.contents.pixels[idx + 1] = color >> 16 & 0xff
-            img.contents.pixels[idx + 2] = color >> 8 & 0xff
-            img.contents.pixels[idx + 3] = color & 0xff
-
-            x += x_inc
-            y += y_inc
-
     def _draw_connections(self, color: int = 0xFFFFFF50) -> None:
         for conn in self.connections:
             hub_a = conn.hub_a
@@ -297,6 +274,7 @@ class MlxWindow:
                 self.img_lines,
                 (x1, y1), (x2, y2),
                 color=color,
+                thickness=min(conn.capacity, 8) * 3
                 )
 
             # write capacity

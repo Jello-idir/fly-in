@@ -1,0 +1,25 @@
+nb_drones: 4
+
+start_hub:      S       0 0     [color=yellow]
+
+hub:            R1      2 0     [color=red zone=restricted]
+hub:            R2      3 0     [color=red zone=priority]
+hub:            R3      4 0     [color=red zone=restricted]
+
+hub:            L1      -1 0    [color=white]
+hub:            L2      -2 -1   [color=white]
+hub:            L3      3 -1    [color=white]
+hub:            L4      6 -1    [color=white]
+
+end_hub:        E       5 0     [color=blue zone=restricted]
+
+connection:     S-R1            [max_link_capacity=2]
+connection:     R1-R2           [max_link_capacity=2]
+connection:     R2-R3           [max_link_capacity=2]
+connection:     R3-E            [max_link_capacity=2]
+
+connection:     S-L1            [max_link_capacity=3]
+connection:     L1-L2           [max_link_capacity=3]
+connection:     L2-L3           [max_link_capacity=3]
+connection:     L3-L4           [max_link_capacity=3]
+connection:     L4-E            [max_link_capacity=3]
