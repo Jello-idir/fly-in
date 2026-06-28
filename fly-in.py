@@ -46,7 +46,7 @@ if __name__ == "__main__":
 
     # parsing
     try:
-        f = "maps/custom/" + input("map file: ") + ".txt"
+        f = "./put_your_map_here.txt"
         mapdata = MapData.from_file(f)
     except Exception as e:
         sys.stderr.write(f"\033[31mError:\033[0m {e}\n")
@@ -64,8 +64,6 @@ if __name__ == "__main__":
 
     g.navigate_drones()
     solution , animation_solution = g.get_solution()
-
-    print(len(solution.splitlines()))
 
     window.run(solution=animation_solution)
     # -----------

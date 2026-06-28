@@ -30,7 +30,7 @@ hub:            R5          10 0         [color=red zone=restricted]
 hub:            R6          11 0         [color=red zone=restricted]
 hub:            R7          12 0         [color=red zone=restricted]
 
-end_hub:        E           13 0         [color=blue]
+end_hub:        E           13 0         [color=green]
 
 
 connection:     start-gate      [max_link_capacity=14]

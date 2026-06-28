@@ -5,6 +5,7 @@ from collections import deque
 import ctypes
 import re
 import random
+from itertools import cycle
 
 
 CONNECTION_AND_TRAIL_DEPTH = 1
@@ -190,21 +191,42 @@ class MlxWindow:
             x += self.cfg.font[c].width
 
     def _draw_entity(self, entity: Entity) -> None:
+        hub_color = entity.color
+        if entity.color == ColorType.rainbow:
+            color_list = [
+                ColorType.red,
+                ColorType.orange,
+                ColorType.yellow,
+                ColorType.green,
+                ColorType.teal,
+                ColorType.blue,
+                ColorType.cyan,
+                ColorType.purple,
+                ColorType.violet,
+                ColorType.magenta,
+                ColorType.pink,
+            ]
+        height = entity.size[1]
+
         for pixel in entity.shape:
-            for y in range(pixel[1], (pixel[1] + 1)):
-                for x in range(pixel[0], (pixel[0] + 1)):
-                    r = (pixel[2] >> 24) & 0xFF
-                    g = (pixel[2] >> 16) & 0xFF
-                    b = (pixel[2] >> 8) & 0xFF
-                    if r == g and g == b:
-                        color = pixel[2]
-                    else:
-                        color = entity.color
-                    idx = (y * entity.img.contents.width + x) * 4
-                    entity.img.contents.pixels[idx] = color >> 24 & 0xff
-                    entity.img.contents.pixels[idx + 1] = color >> 16 & 0xff
-                    entity.img.contents.pixels[idx + 2] = color >> 8 & 0xff
-                    entity.img.contents.pixels[idx + 3] = color & 0xff
+            x, y = pixel[0], pixel[1]
+            r = (pixel[2] >> 24) & 0xFF
+            g = (pixel[2] >> 16) & 0xFF
+            b = (pixel[2] >> 8) & 0xFF
+            if r == g and g == b:
+                color = pixel[2]
+            else:
+                color = hub_color
+                if entity.color == ColorType.rainbow:
+                    try:
+                        color = color_list[int(y / (height / len(color_list)))]
+                    except (ZeroDivisionError, IndexError):
+                        color = ColorType.white
+            idx = (y * entity.img.contents.width + x) * 4
+            entity.img.contents.pixels[idx] = color >> 24 & 0xff
+            entity.img.contents.pixels[idx + 1] = color >> 16 & 0xff
+            entity.img.contents.pixels[idx + 2] = color >> 8 & 0xff
+            entity.img.contents.pixels[idx + 3] = color & 0xff
 
     def _attach_entity(self, entity: Entity, pos: tuple[int, int] | None = None) -> None:
         if pos is None:
