@@ -5,13 +5,10 @@ from Common import Shapes
 
 @dataclass
 class RenderConfig:
-    width: int
-    height: int
+    window_size: tuple[int, int]
+    min_coord: tuple[int, int]
+    paddin: tuple[int, int]
     cell: int
     space: int
-    min_x: int
-    min_y: int
-    padd_x: int
-    padd_y: int
     font: dict[str, Glyph]
     shapes: type[Shapes]

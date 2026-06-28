@@ -40,11 +40,6 @@ class MapData(BaseModel):
         if counts["end_hub"] != 1:
             raise ValueError(f"must have exactly one end_hub, found {counts['end_hub']}.")
 
-        for conn in self.connections:
-            if conn.hub_a not in self.hubs:
-                raise ValueError(f"hub '{conn.hub_a}' in connections does not exist.")
-            if conn.hub_b not in self.hubs:
-                raise ValueError(f"hub '{conn.hub_b}' in connections does not exist.")
         return self
 
     @classmethod
@@ -124,13 +119,17 @@ class MapData(BaseModel):
             ):
                 raise ValueError("duplicate connection detected.")
 
+            if hub_a not in hubs:
+                raise ValueError(f"hub '{hub_a}' not defined.")
+            if hub_b not in hubs:
+                raise ValueError(f"hub '{hub_b}' not defined.")
+
             try:
                 connections.append(
                     ConnectionBase(hub_a=hub_a, hub_b=hub_b,
                             **({"link_capacity": int(cap)} if cap else {})))
             except Exception as e:
                 raise ValueError(f"invalid connection data.\nline: -> '{match.string}'\nerror: {e}")
-
 
         m_drones = re.compile(r"nb_drones\s*:\s*(\d+)\s*$")
         m_hubs = re.compile(
@@ -152,26 +151,44 @@ class MapData(BaseModel):
         )
 
         with open(file_path, "r") as file:
+            first_line = None
+            for line in file:
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                first_line = line.split("#", 1)[0].strip()
+                break
+            if first_line is None:
+                raise ValueError("map file is empty or contains only comments.")
+            if match := m_drones.match(first_line):
+                try:
+                    _handle_nb_drones(match)
+                except ValueError as e:
+                    raise ValueError(f"{e}\nline: -> '{first_line}'")
+            else:
+                raise ValueError(f"first line must define nb_drones.\nline: -> '{first_line}'")
+
             for line in file:
                 line = line.strip()
                 if not line or line.startswith("#"):
                     continue
                 line = line.split("#", 1)[0].strip()
+
                 if match := m_drones.match(line):
-                    try:
-                        _handle_nb_drones(match)
-                    except ValueError as e:
-                        raise ValueError(f"{e}\nline: -> '{line}'")
+                    raise ValueError(f"nb_drones must be defined in the first line.\nline: -> '{line}'")
+
                 elif match := m_hubs.match(line):
                     try:
                         _handle_hub(match)
                     except ValueError as e:
                         raise ValueError(f"{e}\nline: -> '{line}'")
+
                 elif match := m_connections.match(line):
                     try:
                         _handle_connection(match)
                     except ValueError as e:
                         raise ValueError(f"{e}\nline: -> '{line}'")
+
                 else:
                     raise ValueError(f"no pattern matched.\nline: -> '{line}'")
 

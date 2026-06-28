@@ -1,0 +1,58 @@
+# beaten in 66
+
+nb_drones: 14
+
+start_hub:      start       0 0         [color=yellow max_drones=15]
+
+hub:            gate        1 0         [color=blue max_drones=14]
+
+hub:            T1          1 -1         [color=blue max_drones=13 zone=restricted]
+hub:            T2          2 -1         [color=blue max_drones=12 zone=restricted]
+hub:            T3          3 -1         [color=blue max_drones=7 zone=restricted]
+hub:            T4          4 -1         [color=blue max_drones=6 zone=restricted]
+
+hub:            M1          2 0          [color=blue max_drones=11 zone=restricted]
+hub:            M2          3 0          [color=blue max_drones=8 zone=restricted]
+hub:            M3          4 0          [color=blue max_drones=5 zone=restricted]
+hub:            M4          5 0          [color=blue max_drones=2 zone=restricted]
+
+
+hub:            B1          2 1          [color=blue max_drones=10 zone=restricted]
+hub:            B2          3 1          [color=blue max_drones=9 zone=restricted]
+hub:            B3          4 1          [color=blue max_drones=4 zone=restricted]
+hub:            B4          5 1          [color=blue max_drones=3 zone=restricted]
+
+hub:            R1          6 0          [color=red zone=restricted]
+hub:            R2          7 0          [color=red zone=restricted]
+hub:            R3          8 0          [color=red zone=restricted]
+hub:            R4          9 0          [color=red zone=restricted]
+hub:            R5          10 0         [color=red zone=restricted]
+hub:            R6          11 0         [color=red zone=restricted]
+hub:            R7          12 0         [color=red zone=restricted]
+
+end_hub:        E           13 0         [color=blue]
+
+
+connection:     start-gate      [max_link_capacity=14]
+connection:     gate-T1         [max_link_capacity=13]
+
+connection:     T1-T2           [max_link_capacity=12]
+connection:     T2-M1           [max_link_capacity=11]
+connection:     M1-B1           [max_link_capacity=10]
+connection:     B1-B2           [max_link_capacity=9]
+connection:     B2-M2           [max_link_capacity=8]
+connection:     M2-T3           [max_link_capacity=7]
+connection:     T3-T4           [max_link_capacity=6]
+connection:     T4-M3           [max_link_capacity=5]
+connection:     M3-B3           [max_link_capacity=4]
+connection:     B3-B4           [max_link_capacity=3]
+connection:     B4-M4           [max_link_capacity=2]
+connection:     M4-R1           [max_link_capacity=1]
+connection:     R1-R2           [max_link_capacity=1]
+connection:     R2-R3           [max_link_capacity=1]
+connection:     R3-R4           [max_link_capacity=1]
+connection:     R4-R5           [max_link_capacity=1]
+connection:     R5-R6           [max_link_capacity=1]
+connection:     R6-R7           [max_link_capacity=1]
+
+connection:     R7-E            [max_link_capacity=1]

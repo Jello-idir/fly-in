@@ -1,3 +1,5 @@
+# bearen in 8
+
 nb_drones: 4
 
 start_hub:      S       0 0     [color=yellow]
@@ -7,9 +9,9 @@ hub:            R2      3 0     [color=red zone=priority]
 hub:            R3      4 0     [color=red zone=restricted]
 
 hub:            L1      -1 0    [color=white]
-hub:            L2      -2 -1   [color=white]
-hub:            L3      3 -1    [color=white]
-hub:            L4      6 -1    [color=white]
+hub:            L2      -1 -1   [color=white]
+hub:            L3      2 -1    [color=white]
+hub:            L4      5 -1    [color=white]
 
 end_hub:        E       5 0     [color=blue zone=restricted]
 

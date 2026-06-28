@@ -154,7 +154,7 @@ class Graph:
             node for node in self.nodes.values() if node.type == HubType.end_hub
         )
 
-        def path_to_edges_path(path: list[Node | Edge]) -> list[Edge | None]:
+        def _nodes_to_edges_path(path: list[Node | Edge]) -> list[Edge | None]:
             list_of_edges: list[Edge | None] = []
             i = 0
             while i < len(path) - 1:
@@ -186,7 +186,7 @@ class Graph:
                 print(f"-- {BLUE}drone {drone.id} resirvation{RESET} --")
 
             nodes_path = self.dijkstra(start_node, end_node, drone)
-            edges_path = path_to_edges_path(nodes_path)
+            edges_path = _nodes_to_edges_path(nodes_path)
 
             drone.path = nodes_path
 
@@ -194,8 +194,8 @@ class Graph:
             PADD = max(len(x.name) for x in edges_path if x is not None) + 3
 
             if debug:
-                print("".join([f"{x:<{PADD}}" for x in range(len(nodes_path))]))
-                print(f"{"".join([f"{x.name:{PADD}}" for x in nodes_path])}")
+                print("| ".join([f"{x:<{PADD}}" for x in range(len(nodes_path))]))
+                print(f"{"| ".join([f"{x.name:{PADD}}" for x in nodes_path])}")
 
             for turn_id, node in enumerate(nodes_path):
                 if isinstance(node, Edge):
@@ -208,7 +208,7 @@ class Graph:
 
             if debug:
                 print(
-                    "".join(
+                    "> ".join(
                         [
                             (
                                 f"{x.name:{PADD}}"
@@ -233,20 +233,38 @@ class Graph:
             if debug:
                 print("----" * 10 + "\n")
 
-    def solve_map(self) -> str:
+    def get_solution(self) -> tuple[str, str]:
+
+
         solution_2d_list: list[list[str]] = []
-        solution_str: str = ""
+        solution_2d_list_for_animation: list[list[str]] = []
 
         for drone in self.drons.values():
-            solution_2d_list.append(
-                [f"D{drone.id}-{move.name}" for move in drone.path[1:]]
-            )
+            line = []
+            animation_line = []
+            for node_edge in drone.path[1:]:
+                move = f"D{drone.id}-{node_edge.name}"
+                animation_line.append(move)
+                if move in line:
+                    move = ""
+                line.append(move)
+            solution_2d_list.append(line)
+            solution_2d_list_for_animation.append(animation_line)
 
         solution_str = "\n".join(
             " ".join(row) for row in zip_longest(*solution_2d_list, fillvalue="")
         )
 
-        # new_sol = ""
-        # for line in solution_str.splitlines():
-        #     new_sol + line.strip()
-        return solution_str
+        solution_animation = "\n".join(
+            " ".join(row) for row in zip_longest(*solution_2d_list_for_animation, fillvalue="")
+        )
+
+        solution_str = "\n".join(
+            " ".join(filter(None, row.split(" "))) for row in solution_str.splitlines()
+        )
+
+        solution_animation = "\n".join(
+            " ".join(filter(None, row.split(" "))) for row in solution_animation.splitlines()
+        )
+
+        return solution_str, solution_animation
