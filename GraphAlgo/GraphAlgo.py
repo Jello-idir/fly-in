@@ -80,7 +80,7 @@ class Graph:
         visited = set()
         while True:
             try:
-                cost, prior_count, _, current, path = heappop(h)
+                cost, priority_count, _, current, path = heappop(h)
             except IndexError:
                 raise ValueError(
                     f"No path found for drone {drone.id} from {start.name} to {end.name}."
@@ -100,26 +100,23 @@ class Graph:
 
             for adj in current.adjacents:
 
-                if adj.zone == ZoneType.priority:
-                    prior_count -= 1
-
                 if adj.zone == ZoneType.blocked:
                     continue
 
                 if adj in path:
                     continue
 
+                is_priority = -1 if adj.zone == ZoneType.priority else 0
+
                 cnx = next(
                     (c for c in current.cnxs if (c.node_a == adj or c.node_b == adj))
                 )
+
                 cnx_cap = this_turn.get(cnx, cnx.capacity)
                 adj_cap = this_turn.get(adj, adj.capacity)
 
                 if adj.zone == ZoneType.restricted:
-                    next_adj_cap = self.capacity_changes.get(cost + 1, {}).get(
-                        adj, adj.capacity
-                    )
-                    adj_cap = min(adj_cap, next_adj_cap)
+                    adj_cap = self.capacity_changes.get(cost + 1, {}).get(adj, adj.capacity)
 
                 if adj.type == HubType.end_hub and adj_cap <= 0:
                     adj_cap = cnx_cap
@@ -133,7 +130,7 @@ class Graph:
                             h,
                             (
                                 cost + 2,
-                                prior_count,
+                                priority_count,
                                 next(counter),
                                 adj,
                                 path + [cnx, adj],
@@ -141,11 +138,11 @@ class Graph:
                         )
                     else:
                         heappush(
-                            h, (cost + 1, prior_count, next(counter), adj, path + [adj])
+                            h, (cost + 1, priority_count + is_priority, next(counter), adj, path + [adj])
                         )
             if needs_wait:
                 heappush(
-                    h, (cost + 1, prior_count, next(counter), current, path + [current])
+                    h, (cost + 1, priority_count, next(counter), current, path + [current])
                 )
 
     def navigate_drones(self, debug: bool = False) -> None:
@@ -157,7 +154,7 @@ class Graph:
             node for node in self.nodes.values() if node.type == HubType.end_hub
         )
 
-        def path_to_edges_path(path: list[Node | Edge]) -> list[Edge]:
+        def path_to_edges_path(path: list[Node | Edge]) -> list[Edge | None]:
             list_of_edges: list[Edge | None] = []
             i = 0
             while i < len(path) - 1:

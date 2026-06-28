@@ -51,7 +51,8 @@ if __name__ == "__main__":
 
     # parsing
     try:
-        mapdata = MapData.from_file("maps/blueprint.txt")
+        f = "maps/custom/" + input("map file: ") + ".txt"
+        mapdata = MapData.from_file(f)
     except Exception as e:
         sys.stderr.write(f"\033[31mError:\033[0m {e}\n")
         sys.exit(1)

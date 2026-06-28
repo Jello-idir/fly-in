@@ -1,0 +1,40 @@
+nb_drones: 12
+
+start_hub:      start       0 -1        [color=yellow]
+
+hub:            gate        1 0         [color=blue zone=restricted max_drones=6]
+
+hub:            A1          2 -1        [color=red max_drones=2 zone=restricted]
+hub:            A3          2 1         [color=red max_drones=1 zone=restricted]
+hub:            A2          2 0         [color=red max_drones=2 zone=restricted]
+
+hub:            B1          3 -1        [color=blue max_drones=12]
+hub:            B2          3 0         [color=orange zone=priority max_drones=3]
+hub:            B3          3 1         [color=orange zone=priority]
+
+hub:            N1          4 -1        [color=orange max_drones=3 zone=priority]
+hub:            N2          4 1         [color=orange zone=priority]
+
+end_hub:        E           5 0         [color=blue]
+
+
+connection:    start-gate      [max_link_capacity=6]
+
+connection:     gate-A3         [max_link_capacity=1]
+connection:     gate-A1         [max_link_capacity=2]
+connection:     gate-A2         [max_link_capacity=1]
+
+connection:     A3-B3           [max_link_capacity=1]
+connection:     A1-B1           [max_link_capacity=2]
+connection:     A2-B2           [max_link_capacity=1]
+
+connection:     B3-N2           [max_link_capacity=1]
+connection:     B1-N1           [max_link_capacity=1]
+connection:     B2-N1           [max_link_capacity=2]
+
+connection:     B1-B2           [max_link_capacity=6]
+connection:     B2-N2           [max_link_capacity=1]
+
+connection:     N1-E            [max_link_capacity=3]
+connection:     B2-E            [max_link_capacity=3]
+connection:     N2-E            [max_link_capacity=1]

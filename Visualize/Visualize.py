@@ -15,7 +15,7 @@ START_END_HUBS_DEPTH = 6
 
 GLYPH_SIZE = 6
 
-RANDOM_AMOUNT = 5
+DRONE_POSITION_VARIANCE = 10
 TRAIL_OPACITY = 0xff
 
 ANIMATING = False
@@ -410,7 +410,7 @@ class MlxWindow:
             dest.drones.append(drone)
 
             # add randomness to the drone position if it's going to a hub
-            randomamount = RANDOM_AMOUNT if isinstance(dest, HubStation) else RANDOM_AMOUNT // 2
+            randomamount = DRONE_POSITION_VARIANCE if isinstance(dest, HubStation) else DRONE_POSITION_VARIANCE // 2
             random_x = random.randint(-randomamount, randomamount)
             random_y = random.randint(-randomamount, randomamount)
             posx = end_pos[0] + random_x
