@@ -30,7 +30,7 @@ run:
 		echo -e "\033[33m!! WARNING";\
 		echo -e " * \033[0mDependencies are not installed. run 'make install' to install dependencies."; \
 	else \
-		$(PYTHON) $(MAIN_SCRIPT); \
+		PYDANTIC_ERRORS_INCLUDE_URL=0 $(PYTHON) $(MAIN_SCRIPT); \
 	fi
 
 clean:

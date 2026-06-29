@@ -1,4 +1,4 @@
-# beaten in 66
+# beaten in 54
 
 nb_drones: 14
 
