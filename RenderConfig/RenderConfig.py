@@ -1,9 +1,8 @@
 from Common import Shapes
-import tomllib
 from pydantic import BaseModel, Field, ConfigDict
-from typing import Any
 from MapParser import MapData
-from PixelFont import load_font
+from PixelFont import load_font, Glyph
+import tomllib
 
 
 # ── TOML section models (1-to-1 with config.toml) ─────────────────────────────
@@ -20,6 +19,9 @@ class DroneSection(BaseModel):
     enable_trail: bool = True
     position_randomness: int = Field(default=5, ge=0, le=32)
 
+class HubSection(BaseModel):
+    enable_drone_count: bool = True
+
 class SizingSection(BaseModel):
     spacing: int = Field(default=32, ge=0)
     padding: tuple[int, int] = (50, 80)
@@ -32,6 +34,7 @@ class AppConfig(BaseModel):
     window: WindowSection = Field(default_factory=WindowSection)
     appearance: AppearanceSection = Field(default_factory=AppearanceSection)
     drone: DroneSection = Field(default_factory=DroneSection)
+    hub: HubSection = Field(default_factory=HubSection)
     sizing: SizingSection = Field(default_factory=SizingSection)
     other: OtherSection = Field(default_factory=OtherSection)
 
@@ -43,9 +46,7 @@ class AppConfig(BaseModel):
 # ── Runtime config (TOML values + map-derived computed fields) ─────────────────
 
 class RenderConfig(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
-    # From TOML
+    # From config file
     window_title: str
     background_color: int
     cenimatic_bars: bool
@@ -53,8 +54,9 @@ class RenderConfig(BaseModel):
     help_tip_text: str
     enable_drone_trail: bool
     drone_position_randomness: int
+    enable_hub_drone_count: bool = True
 
-    # Computed from map + TOML
+    # Computed from map + config file
     window_size: tuple[int, int]
     min_coord: tuple[int, int]
     paddin: tuple[int, int]
@@ -62,7 +64,7 @@ class RenderConfig(BaseModel):
     space: int
 
     # Runtime-loaded
-    font: dict[str, Any]   # Glyph
+    font: dict[str, Glyph]   # Glyph
     shapes: type           # Shapes
 
     @classmethod
@@ -94,6 +96,7 @@ class RenderConfig(BaseModel):
             enable_help_tip=cfg.other.enable_help_tip,
             help_tip_text=cfg.other.help_tip_text,
             enable_drone_trail=cfg.drone.enable_trail,
+            enable_hub_drone_count=cfg.hub.enable_drone_count,
             drone_position_randomness=cfg.drone.position_randomness,
             window_size=(abs_width, abs_height),
             min_coord=(min_x, min_y),

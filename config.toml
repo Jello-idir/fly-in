@@ -1,17 +1,20 @@
 # self explanatory, just change the title of the window here
 [window]
 title = "Fly-in"
-#min_width = 50  # pixels              - min is 500
+min_width = 50  # pixels              - min is 500
 
 
 # self explanatory :)
 [appearance]
-background_color = 0x00000080
+background_color = 0x202020ff
 cenimatic_bars = false
 
 [drone]
 enable_trail = true
 position_randomness = 5  # pixels
+
+[hub]
+enable_drone_count = true
 
 # sizing of the window and the map also self explanatory xD
 [sizing]
@@ -23,4 +26,3 @@ padding = [200, 0]  # pixels - min is [0, 80]
 [other]
 enable_help_tip = true
 help_tip_text = "SPACE to pause/resume  |  LEFT/RIGHT to change speed  |  ESC or Q to quit"
-

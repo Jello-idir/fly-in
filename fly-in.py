@@ -41,4 +41,4 @@ if __name__ == "__main__":
     print(solution)
     window.run(solution=animation_solution)
     sys.exit(0)
-    # -----------
+    # ----------
