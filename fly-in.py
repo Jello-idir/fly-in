@@ -1,7 +1,7 @@
 import signal
 import sys
-from Visualize import *
-from MLX.libmlx import *
+from Visualize import MlxWindow
+from MLX.libmlx import mlx
 from MapParser import MapData
 from GraphAlgo import Graph
 from RenderConfig import RenderConfig
@@ -9,6 +9,7 @@ from RenderConfig import RenderConfig
 
 def signal_handler(sig, frame):
     mlx.mlx_close_window(window.mlx_ptr)
+
 
 if __name__ == "__main__":
     # Set up signal handler for graceful exit on Ctrl+C
@@ -21,7 +22,7 @@ if __name__ == "__main__":
     except Exception as e:
         sys.stderr.write(f"\033[31mMap Error:\033[0m {e}\n")
         sys.exit(1)
-    #-------------------------------------
+    # -------------------------------------
 
     # config init
     try:
@@ -36,7 +37,7 @@ if __name__ == "__main__":
     g = Graph(mapdata)
 
     g.navigate_drones()
-    solution , animation_solution = g.get_solution()
+    solution, animation_solution = g.get_solution()
 
     print(solution)
     window.run(solution=animation_solution)

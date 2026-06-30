@@ -49,7 +49,7 @@ class ColorType(int, Enum):
     pink = (0xFF69B4 << 8) + 0xFF
 
     # special
-    rainbow = (0xFFFFFF << 8)
+    rainbow = 0xFFFFFF << 8
 
 
 class ZoneType(str, Enum):

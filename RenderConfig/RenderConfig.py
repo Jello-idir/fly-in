@@ -4,26 +4,37 @@ from MapParser import MapData
 from PixelFont import load_font, Glyph
 import tomllib
 
+SPACEING_DEFAULT = 32
+PADDING_X_DEFAULT = 25
+PADDING_Y_DEFAULT = 50
+MINIMUM_WINDOW_WIDTH_DEFAULT = 500
+
 
 class WindowSection(BaseModel):
     title: str = "FLY-OUT"
-    min_width: int = Field(default=800, ge=0)
+    min_width: int = Field(ge=0)
+
 
 class AppearanceSection(BaseModel):
     background_color: int = 0x00000080
     cenimatic_bars: bool = True
 
+
 class DroneSection(BaseModel):
     enable_trail: bool = True
     position_randomness: int = Field(default=5, ge=0, le=32)
+
 
 class HubSection(BaseModel):
     enable_name: bool = True
     enable_drone_count: bool = True
 
+
 class SizingSection(BaseModel):
-    spacing: int = Field(default=32, ge=0)
-    padding: tuple[int, int] = (50, 80)
+    spacing: int = Field(ge=32)
+    padding_x: int = Field(ge=PADDING_X_DEFAULT)
+    padding_y: int = Field(ge=PADDING_Y_DEFAULT)
+
 
 class OtherSection(BaseModel):
     enable_help_tip: bool = True
@@ -51,28 +62,46 @@ class RenderConfig(BaseModel):
     shapes: type
 
     @classmethod
-    def from_mapdata(cls, mapdata: MapData, config_path: str = "config.toml") -> RenderConfig:
+    def from_mapdata(
+        cls, mapdata: MapData, config_path: str = "config.toml"
+    ) -> RenderConfig:
         with open(config_path, "rb") as f:
             # load toml as dict
             cfg = tomllib.load(f)
 
             min_x, max_x, min_y, max_y = mapdata.bounding_box
-            map_width  = max_x - min_x + 1
+            map_width = max_x - min_x + 1
             map_height = max_y - min_y + 1
 
-            shapes   = Shapes
+            min_width = cfg.get("window", {}).get(
+                "min_width", MINIMUM_WINDOW_WIDTH_DEFAULT
+            )
+
+            # Calculate absolute window size
+            shapes = Shapes
             hub_size = max(shapes.hub._size())
-            spacing  = cfg["sizing"]["spacing"]
+            spacing = cfg.get("sizing", {}).get("spacing", SPACEING_DEFAULT)
 
-            pad_x = max(0,  cfg["sizing"]["padding"][0])
-            pad_y = max(80, cfg["sizing"]["padding"][1])
+            pad_x = cfg.get("sizing", {}).get("padding_x", PADDING_X_DEFAULT)
+            pad_y = cfg.get("sizing", {}).get("padding_y", PADDING_Y_DEFAULT)
 
-            abs_width  = map_width  * hub_size + spacing * (map_width  - 1) + pad_x * 2
-            abs_height = map_height * hub_size + spacing * (map_height - 1) + pad_y * 2
+            abs_width = (
+                map_width * hub_size + spacing * (map_width - 1) + pad_x * 2
+                )
+            abs_height = (
+                map_height * hub_size + spacing * (map_height - 1) + pad_y * 2
+                )
 
-            if abs_width < cfg["window"]["min_width"]:
-                abs_width = cfg["window"]["min_width"]
-                pad_x = (abs_width - (map_width * hub_size + spacing * (map_width - 1))) // 2
+            if abs_width < min_width:
+                abs_width = min_width
+                pad_x = (
+                    abs_width - (
+                        map_width * hub_size + spacing * (map_width - 1)
+                        )
+                ) // 2
+
+            cfg["sizing"]["padding_x"] = pad_x
+            cfg["sizing"]["padding_y"] = pad_y
 
         return cls(
             window=cfg["window"],

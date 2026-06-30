@@ -16,12 +16,12 @@ class Shapes(set[tuple[int, int, int]], Enum):
                     points.add((x, y, color))
         return points
 
-    drone         = _load("Assets/drone.png")
-    hub           = _load("Assets/hub.png")
+    drone = _load("Assets/drone.png")
+    hub = _load("Assets/hub.png")
     hub_restricted = _load("Assets/hub_restricted.png")
-    hub_priority  = _load("Assets/hub_priority.png")
-    hub_blocked   = _load("Assets/hub_blocked.png")
-    hub_start     = _load("Assets/hub_start.png")
+    hub_priority = _load("Assets/hub_priority.png")
+    hub_blocked = _load("Assets/hub_blocked.png")
+    hub_start = _load("Assets/hub_start.png")
 
     def __call__(self):
         return self.value

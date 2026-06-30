@@ -1,3 +1,6 @@
+# flake8: noqa
+# mypy: ignore-errors
+
 import ctypes
 from _typeshed import Incomplete
 
