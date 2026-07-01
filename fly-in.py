@@ -7,7 +7,7 @@ from GraphAlgo import Graph
 from RenderConfig import RenderConfig
 
 
-def signal_handler(sig, frame):
+def signal_handler(sig, frame):  # type: ignore
     mlx.mlx_close_window(window.mlx_ptr)
 
 

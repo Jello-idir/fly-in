@@ -1,3 +1,3 @@
-from .RenderConfig import RenderConfig
+from .RenderConfig import RenderConfig, Shapes, Shape
 
-__all__ = ["RenderConfig"]
+__all__ = ["RenderConfig", "Shapes", "Shape"]

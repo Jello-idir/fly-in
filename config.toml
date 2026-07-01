@@ -7,19 +7,20 @@ title = "Fly-in"
 min_width = 500 # atleast 500
 
 [appearance]
+theme = "light"
 background_color = 0x202020ff
 cenimatic_bars = false
 
 [drone]
 enable_trail = true
-position_randomness = 5
+position_randomness = 10
 
 [hub]
 enable_name = true
 enable_drone_count = true
 
 [sizing]
-spacing = 100
+spacing = 48
 padding_x = 100 # atleast 25
 padding_y = 50 # atleast 50
 

@@ -1,6 +1,5 @@
 from .Types import HubType, ColorType, ZoneType
 from .Models import HubMetadata, HubBase, ConnectionBase, DroneBase
-from .Shapes import Shapes
 
 __all__ = [
     "HubType",
@@ -10,5 +9,4 @@ __all__ = [
     "HubBase",
     "ConnectionBase",
     "DroneBase",
-    "Shapes",
 ]

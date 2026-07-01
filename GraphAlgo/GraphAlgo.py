@@ -5,6 +5,8 @@ from itertools import count, zip_longest
 
 
 class Node:
+    """ Node in the graph representing a hub.
+    """
     def __init__(
             self, name: str,
             capacity: int,
@@ -20,6 +22,8 @@ class Node:
 
 
 class Edge:
+    """ Edge in the graph representing a connection between two hubs.
+    """
     def __init__(
             self, name: str,
             link_capacity: int,
@@ -33,6 +37,8 @@ class Edge:
 
 
 class Drone:
+    """ Drone that will navigate through the graph.
+    """
     def __init__(
         self,
         id: int,
@@ -42,7 +48,16 @@ class Drone:
 
 
 class Graph:
+    """ Graph representing the network of hubs and connections,
+    and managing the navigation of drones through it.
+    """
     def __init__(self, mapdata: MapData):
+        """ initializes the graph from the map data.
+
+        Args:
+            mapdata (MapData): The map data containing hubs,
+            connections, and drones.
+        """
         self.nodes: dict[str, Node] = {}
         self.edges: dict[str, Edge] = {}
         self.drons: dict[int, Drone] = {}
@@ -75,6 +90,19 @@ class Graph:
             self.drons[drone_id] = Drone(id=drone_id)
 
     def dijkstra(self, start: Node, end: Node) -> list[Node | Edge]:
+        """ Finds the shortest path from start node to end node,
+        using a modified Dijkstra's algorithm
+
+        Args:
+            start (Node): Starting node for the pathfinding algorithm.
+            end (Node): Ending node for the pathfinding algorithm.
+
+        Raises:
+            ValueError: If no path is found from start to end.
+
+        Returns:
+            list[Node | Edge]: The shortest path from start to end.
+        """
         counter = count(start=1, step=2)
         # priority_counter = count(start=0, step=2)
         h: list[tuple[int, int, int, Node, list[Node | Edge]]] = [
@@ -168,7 +196,11 @@ class Graph:
                 )
 
     def navigate_drones(self) -> None:
+        """ Navigates all drones from the start hub to the end hub.
 
+        Returns:
+            None
+        """
         start_node = next(
             node for node in self.nodes.values()
             if node.type == HubType.start_hub
@@ -179,6 +211,15 @@ class Graph:
         )
 
         def _nodes_to_edges_path(path: list[Node | Edge]) -> list[Edge | None]:
+            """ Converts a path of nodes to a path of edges.
+
+            Args:
+                path (list[Node  |  Edge]): The path of nodes to convert.
+
+            Returns:
+                list[Edge | None]: The corresponding path of edges,
+                with None for consecutive nodes that are the same.
+            """
             list_of_edges: list[Edge | None] = []
             i = 0
             while i < len(path) - 1:
@@ -229,6 +270,13 @@ class Graph:
                 )
 
     def get_solution(self) -> tuple[str, str]:
+        """ Generates the solution output of the drone navigation.
+
+        Returns:
+            tuple[str, str]: A tuple containing two strings:
+            the first string represents the moves of the drones,
+            and the second is the same as first but for Animation.
+        """
 
         output_list: list[list[str]] = []
         animation_list: list[list[str]] = []

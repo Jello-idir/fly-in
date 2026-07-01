@@ -9,7 +9,7 @@ class ColorType(int, Enum):
     # basics
     white = (0xFFFFFF << 8) + 0xFF
     none = (0x3D3D3D << 8) + 0xFF
-    black = (0x000000 << 8) + 0xFF
+    black = (0x1F1F1F << 8) + 0xFF
     gray = (0x808080 << 8) + 0xFF
 
     # reds

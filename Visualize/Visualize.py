@@ -5,7 +5,7 @@ from MLX.libmlx import (
 from Common import (
     HubBase, DroneBase, HubMetadata, HubType, ZoneType, ColorType
 )
-from RenderConfig import RenderConfig
+from RenderConfig import RenderConfig, Shape
 from MapParser import MapData
 from collections import deque
 import ctypes
@@ -18,7 +18,8 @@ BG_DEPTH = 1
 HUB_DEPTH = 3
 STATS_DEPTH = 4
 DRONE_DEPTH = 5
-START_END_HUBS_DEPTH = 6
+DRONE_TRAIL_DEPTH = 6
+START_END_HUBS_DEPTH = 7
 
 GLYPH_SIZE = 6
 DRONE_POSITION_VARIANCE = 10
@@ -42,14 +43,14 @@ class Entity:
         cfg: RenderConfig,
         coord: tuple[int, int],
         color: int,
-        shape: set[tuple[int, int, int]],
+        shape: Shape,
     ):
         self.color = color
         self.shape = shape
         self.coord = coord
         self.size = (
-            max(x[0] for x in shape) + 1,
-            max(y[1] for y in shape) + 1
+            max(x[0] for x in shape.pixels) + 1,
+            max(y[1] for y in shape.pixels) + 1
             )
         self.pos = (
             int((coord[0] - cfg.min_coord[0])
@@ -112,9 +113,11 @@ class HubStation(Entity):
     @staticmethod
     def get_shape_by_type(
         hub_type: HubType, metadata: HubMetadata, cfg: RenderConfig
-    ) -> set[tuple[int, int, int]]:
-        if hub_type == HubType.start_hub or hub_type == HubType.end_hub:
+    ) -> Shape:
+        if hub_type == HubType.start_hub:
             return cfg.shapes.hub_start
+        elif hub_type == HubType.end_hub:
+            return cfg.shapes.hub_end
         elif metadata.zone == ZoneType.restricted:
             return cfg.shapes.hub_restricted
         elif metadata.zone == ZoneType.priority:
@@ -162,6 +165,9 @@ class MlxWindow:
             self.mlx_ptr, self.cfg.window_size[0], self.cfg.window_size[1]
         )
         self.img_stats = mlx.mlx_new_image(self.mlx_ptr, 100, 8)
+        self.img_trail = mlx.mlx_new_image(
+            self.mlx_ptr, self.cfg.window_size[0], self.cfg.window_size[1]
+        )
 
     @classmethod
     def from_map(cls, mapdata: MapData, cfg: RenderConfig):
@@ -214,6 +220,7 @@ class MlxWindow:
                 img.contents.pixels[idx + 1] = color >> 16 & 0xFF
                 img.contents.pixels[idx + 2] = color >> 8 & 0xFF
                 img.contents.pixels[idx + 3] = color & 0xFF
+
 
     def _draw_window_stats(
         self, turn_count: int | None = None,
@@ -311,7 +318,7 @@ class MlxWindow:
             ]
         height = entity.size[1]
 
-        for pixel in entity.shape:
+        for pixel in entity.shape.pixels:
             x, y = pixel[0], pixel[1]
             r = (pixel[2] >> 24) & 0xFF
             g = (pixel[2] >> 16) & 0xFF
@@ -366,11 +373,11 @@ class MlxWindow:
         cap_of_hub = hub.metadata.max_drones
 
         if hub.type == HubType.end_hub or hub.type == HubType.start_hub:
-            color = 0xFFFFFF << 8 | 0xFF
+            color = 0xBABABA << 8 | 0xFF
         elif n_of_drones > cap_of_hub:
             color = 0xFF7272 << 8 | 0xFF
         elif n_of_drones == cap_of_hub:
-            color = 0x67C687 << 8 | 0xFF
+            color = 0xBABABA << 8 | 0xFF
         else:
             color = 0xFFFFFF << 8 | 0xFF
         stats = f"{n_of_drones}/{cap_of_hub}"
@@ -386,7 +393,7 @@ class MlxWindow:
         )
         hub.img.contents.instances[0].z = STATS_DEPTH
 
-    def _redraw_hub_stats(
+    def _update_drone_count(
             self, hub: HubStation, is_upper: bool = False
             ) -> None:
         self._fill_image(hub.img_stat, 0x00000000)
@@ -483,7 +490,7 @@ class MlxWindow:
             # draw trail in img_trails
             if self.cfg.drone.enable_trail:
                 self._draw_line(
-                    self.img_bg,
+                    self.img_trail,
                     (
                         pos_from[0] + drone.size[0] // 2,
                         pos_from[1] + drone.size[1] // 2,
@@ -506,9 +513,9 @@ class MlxWindow:
                 # update drone location and position
                 if self.cfg.hub.enable_drone_count:
                     if isinstance(dest, HubStation):
-                        self._redraw_hub_stats(dest)
+                        self._update_drone_count(dest)
                     if isinstance(drone.location, HubStation):
-                        self._redraw_hub_stats(drone.location)
+                        self._update_drone_count(drone.location)
 
                 drone.location = dest
                 drone.pos = (end_pos[0], end_pos[1])
@@ -612,7 +619,7 @@ class MlxWindow:
                     SOLUTION_LINE.append(move.strip())
                 self._animate_line()
                 self._turns_count += 1
-                self._draw_window_stats()
+                self._draw_window_stats(color=0xFFFFFFAA)
             except IndexError:
                 ANIMATING = False
                 return

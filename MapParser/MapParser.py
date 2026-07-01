@@ -10,8 +10,17 @@ from Common import (
     ZoneType,
 )
 
+RED = "\033[91m"
+YELLOW = "\033[93m"
+RESET = "\033[0m"
+
 
 class MapData(BaseModel):
+    """ class to represent the map data
+
+    Raises:
+        ValueError: if one of various validation errors occur.
+    """
     nb_drones: int = Field(gt=0)
     hubs: dict[str, HubBase]
     connections: list[ConnectionBase]
@@ -20,6 +29,11 @@ class MapData(BaseModel):
     @computed_field
     @property
     def bounding_box(self) -> tuple[int, int, int, int]:
+        """ property to return the bounding box of the map
+
+        Returns:
+            tuple[int, int, int, int]: (min_x, max_x, min_y, max_y) of the map
+        """
         if not self.hubs:
             return (0, 0, 0, 0)
         min_x = min(hub.pos[0] for hub in self.hubs.values())
@@ -29,7 +43,15 @@ class MapData(BaseModel):
         return (min_x, max_x, min_y, max_y)
 
     @model_validator(mode="after")
-    def validate_map(self):
+    def validate_map(self) -> "MapData":
+        """ validate the map data after model initialization
+
+        Raises:
+            ValueError: if no hubs or connections are defined,
+            or if there is more than a single start_hub and end_hub,
+        Returns:
+            MapData: the validated map data
+        """
         if not self.hubs:
             raise ValueError("no hubs defined.")
         if not self.connections:
@@ -48,18 +70,38 @@ class MapData(BaseModel):
             )
         if counts["end_hub"] != 1:
             raise ValueError(
-                f"must have exactly one end_hub, found {counts['end_hub']}."
+                f"must have exactly one end_hub, "
+                f"found {counts['end_hub']}."
             )
 
         return self
 
     @classmethod
     def from_file(cls, file_path: str) -> "MapData":
+        """ create a MapData instance from a map file
+
+        Args:
+            file_path (str): path to the map file
+
+        Raises:
+            ValueError: if the map file is invalid or contains errors
+
+        Returns:
+            MapData: instance of MapData created from the map file
+        """
         nb_drones: int | None = None
         hubs: dict[str, HubBase] = {}
         connections: list[ConnectionBase] = []
 
         def _handle_nb_drones(match: re.Match) -> None:
+            """ handle the number of drones defined in the map file
+
+            Args:
+                match (re.Match): regex match object for the number of drones
+
+            Raises:
+                ValueError: if the number of drones is defined multiple times
+            """
             nonlocal nb_drones
 
             if nb_drones is not None:
@@ -67,6 +109,17 @@ class MapData(BaseModel):
             nb_drones = int(match.group(1))
 
         def _handle_hub(match: re.Match) -> None:
+            """ handle a hub defined in the map file
+
+            Args:
+                match (re.Match): regex match object for the hub definition
+
+            Raises:
+                ValueError: if the hub name is a duplicate,
+                or if the metadata format is invalid,
+                or if the coordinates are invalid,
+                or if the hub position overlaps with another hub.
+            """
 
             hub_type, hub_name, x, y, metadata_str = match.groups()
 
@@ -79,7 +132,7 @@ class MapData(BaseModel):
                 metadata_str = metadata_str.strip()
                 if not re.fullmatch(r"(\w+=\w+\s*)*", metadata_str):
                     raise ValueError(
-                        f"invalid metadata format.\nline: -> '{match.string}'"
+                        "invalid hub metadata."
                     )
 
                 metadata_dict = dict(re.findall(r"(\w+)=(\w+)", metadata_str))
@@ -91,8 +144,7 @@ class MapData(BaseModel):
                             ]
                     except KeyError:
                         raise ValueError(
-                            f"invalid color.\n"
-                            f"line: -> '{match.string}'"
+                            "invalid color."
                         )
 
                 if "zone" in metadata_dict:
@@ -100,16 +152,22 @@ class MapData(BaseModel):
                         metadata_dict["zone"] = ZoneType(metadata_dict["zone"])
                     except ValueError:
                         raise ValueError(
-                            f"invalid zone.\n"
-                            f"line: -> '{match.string}'"
+                            "invalid zone."
                         )
+
+                if extra_keys := (
+                        set(metadata_dict.keys())
+                        - {"zone", "color", "max_drones"}
+                        ):
+                    raise ValueError(
+                        f"invalid metadata keys: {extra_keys}"
+                    )
 
                 try:
                     metadata = HubMetadata(**metadata_dict)
                 except Exception as e:
                     raise ValueError(
-                        f"invalid metadata.\n"
-                        f"line: -> '{match.string}'\n"
+                        f"invalid metadata."
                         f"error: {e}"
                     )
 
@@ -120,13 +178,12 @@ class MapData(BaseModel):
                 x, y = int(x), int(y)
             except ValueError:
                 raise ValueError(
-                    f"invalid coordinates.\n"
-                    f"line: -> '{match.string}'"
+                    f"invalid coordinates {x} {y}."
                 )
 
             if (x, y) in (hub.pos for hub in hubs.values()):
                 raise ValueError(
-                    f"overlaping hubs ({x}, {y}).\nline: -> '{match.string}'"
+                    f"overlaping hubs ({x}, {y})."
                 )
 
             try:
@@ -138,10 +195,21 @@ class MapData(BaseModel):
                 )
             except Exception as e:
                 raise ValueError(
-                    f"invalid hub data.\nline: -> '{match.string}'\nerror: {e}"
+                    f"invalid hub data.\n"
+                    f"error: {e}"
                 )
 
         def _handle_connection(match: re.Match) -> None:
+            """ handle a connection defined in the map file
+
+            Args:
+                match (re.Match): regex match object for the connection
+
+            Raises:
+                ValueError: if the connection is a duplicate,
+                or if either hub in the connection is not defined
+                or if the connection data is invalid
+            """
 
             hub_a, hub_b, cap = match.groups()
             if any(
@@ -167,7 +235,6 @@ class MapData(BaseModel):
             except Exception as e:
                 raise ValueError(
                     f"invalid connection data.\n"
-                    f"line: -> '{match.string}'\n"
                     f"error: {e}"
                 )
 
@@ -198,47 +265,53 @@ class MapData(BaseModel):
                     continue
                 first_line = line.split("#", 1)[0].strip()
                 break
+
             if first_line is None:
                 raise ValueError(
                     "map file is empty or contains only comments."
                 )
-            if match := m_drones.match(first_line):
-                try:
+            try:
+                if match := m_drones.match(first_line):
                     _handle_nb_drones(match)
-                except ValueError as e:
-                    raise ValueError(f"{e}\nline: -> '{first_line}'")
-            else:
-                raise ValueError(
-                    f"first line must define nb_drones.\n"
-                    f"line: -> '{first_line}'"
-                )
-
-            for line in file:
-                line = line.strip()
-                if not line or line.startswith("#"):
-                    continue
-                line = line.split("#", 1)[0].strip()
-
-                if match := m_drones.match(line):
+                else:
                     raise ValueError(
-                        f"nb_drones must be defined in the first line.\n"
-                        f"line: -> '{line}'"
+                        "first line must define nb_drones."
+                    )
+            except ValueError as e:
+                raise ValueError(
+                    f"{e}\n"
+                    f"{YELLOW}line: -> {RESET}'{first_line}'"
                     )
 
-                elif match := m_hubs.match(line):
-                    try:
+            for line in file:
+
+                # strip whitespace from the line
+                line = line.strip()
+
+                # skip empty lines and comments
+                if not line or line.startswith("#"):
+                    continue
+
+                # remove comments from the line
+                line = line.split("#", 1)[0].strip()
+
+                try:
+                    if match := m_hubs.match(line):
                         _handle_hub(match)
-                    except ValueError as e:
-                        raise ValueError(f"{e}\nline: -> '{line}'")
 
-                elif match := m_connections.match(line):
-                    try:
+                    elif match := m_connections.match(line):
                         _handle_connection(match)
-                    except ValueError as e:
-                        raise ValueError(f"{e}\nline: -> '{line}'")
 
-                else:
-                    raise ValueError(f"no pattern matched.\nline: -> '{line}'")
+                    elif match := m_drones.match(line):
+                        raise ValueError(
+                            "nb_drones must be defined in the first line."
+                            )
+                    else:
+                        raise ValueError("no pattern matched.")
+
+                except ValueError as e:
+                    raise ValueError(f"{e}\n"
+                                     f"{YELLOW}line: --> '{line}'{RESET}")
 
         try:
             start_hub_pos = next(
@@ -247,12 +320,13 @@ class MapData(BaseModel):
         except StopIteration:
             raise ValueError("no start_hub defined.")
 
+        nb_drones = 0 if nb_drones is None else nb_drones
         return MapData(
-            nb_drones=nb_drones,  # type: ignore
+            nb_drones=nb_drones,
             hubs=hubs,
             connections=connections,
             drones={
                 i: DroneBase(id=i, coord=start_hub_pos)
-                for i in range(1, nb_drones + 1)  # type: ignore
+                for i in range(1, nb_drones + 1)
             },
         )
