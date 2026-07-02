@@ -22,7 +22,6 @@ DRONE_TRAIL_DEPTH = 6
 START_END_HUBS_DEPTH = 7
 
 GLYPH_SIZE = 6
-DRONE_POSITION_VARIANCE = 10
 
 
 ANIMATING = False
@@ -596,7 +595,7 @@ class MlxWindow:
             randomamount = (
                 self.cfg.drone.position_randomness
                 if isinstance(dest, HubStation)
-                else self.cfg.drone.position_randomness // 2
+                else self.cfg.drone.position_randomness // 3
             )
             random_x = random.randint(-randomamount, randomamount)
             random_y = random.randint(-randomamount, randomamount)
@@ -716,25 +715,28 @@ class MlxWindow:
             (
                 hub for hub in self.hubs.values()
                 if hub.type == HubType.start_hub
-            ), None
+            )
         )
 
-        if start_hub:
-            for drone in self.drones.values():
-                drone.pos = (
-                    start_hub.pos[0]
-                    + start_hub.img.contents.width // 2
-                    - drone.size[0] // 2
-                    + random.randint(-10, 10),
-                    start_hub.pos[1]
-                    + start_hub.img.contents.height // 2
-                    - drone.size[1] // 2
-                    + random.randint(-10, 10),
-                )
-                self._draw_entity(drone)
-                self._attach_entity(drone, drone.pos)
-        else:
-            raise ValueError("No start hub found in the map.")
+        for drone in self.drones.values():
+            drone.pos = (
+                start_hub.pos[0]
+                + start_hub.img.contents.width // 2
+                - drone.size[0] // 2
+                + random.randint(
+                    -self.cfg.drone.position_randomness,
+                    self.cfg.drone.position_randomness
+                    ),
+                start_hub.pos[1]
+                + start_hub.img.contents.height // 2
+                - drone.size[1] // 2
+                + random.randint(
+                    -self.cfg.drone.position_randomness,
+                    self.cfg.drone.position_randomness
+                    ),
+            )
+            self._draw_entity(drone)
+            self._attach_entity(drone, drone.pos)
 
         # draw connections
         self._draw_connections()

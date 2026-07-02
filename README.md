@@ -1,9 +1,21 @@
 *This project has been created as part of the 42 curriculum by aait-idi*
 
-# fly-in
+<h2 style="
+color: #FFFFFF;
+font-size: 24px;
+font-weight: 800">
+FLY-IN
+</h2>
+
 Designing an efficient drone routing system that navigates multiple drones through connected zones while minimizing simulation turns and handling movement constraints.
 
-# Description section that clearly presents the project, including its goal and a brief overview.
+<h2 style="
+color: #FFFFFF;
+font-size: 24px;
+font-weight: 800">
+Description
+</h2>
+
 the project - as you read in the above section - is about navigating multiple drones through connected hubs while respecting hubs max drone capacity and connections max link capacities as efficent as possible, don't worry if you got confused already :] ill explain everything in details.
 
 first you need to know a few things before:

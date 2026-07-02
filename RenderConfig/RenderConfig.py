@@ -104,13 +104,13 @@ class AppearanceSection(BaseModel):
 class AssetsSection(BaseModel):
     """ assets settings basemodel
     """
-    drone: str = "assets/dark/drone.png"
-    hub: str = "assets/dark/hub.png"
-    hub_restricted: str = "assets/dark/hub_restricted.png"
-    hub_priority: str = "assets/dark/hub_priority.png"
-    hub_blocked: str = "assets/dark/hub_blocked.png"
-    hub_start: str = "assets/dark/hub_start.png"
-    hub_end: str = "assets/dark/hub_end.png"
+    drone: str
+    hub: str
+    hub_restricted: str
+    hub_priority: str
+    hub_blocked: str
+    hub_start: str
+    hub_end: str
 
 class DroneSection(BaseModel):
     """ drone settings basemodel
@@ -129,7 +129,7 @@ class HubSection(BaseModel):
 class SizingSection(BaseModel):
     """ sizing settings basemodel
     """
-    spacing: int = Field(ge=32)
+    spacing: int = Field(ge=0)
     padding_x: int = Field(ge=PADDING_X_DEFAULT)
     padding_y: int = Field(ge=PADDING_Y_DEFAULT)
 

@@ -13,31 +13,31 @@ class ColorType(int, Enum):
     gray = (0x808080 << 8) + 0xFF
 
     # reds
-    red = (0xFF4242 << 8) + 0xFF
+    red = (0xCF4141 << 8) + 0xFF
     darkred = (0xB42F2F << 8) + 0xFF
     crimson = (0xFF496E << 8) + 0xFF
     maroon = (0x922424 << 8) + 0xFF
 
     # oranges
-    orange = (0xFF8C00 << 8) + 0xFF
+    orange = (0xD07D16 << 8) + 0xFF
     darkorange = (0xFF6600 << 8) + 0xFF
     coral = (0xFF6B6B << 8) + 0xFF
     brown = (0x8B4513 << 8) + 0xFF
 
     # yellows
-    yellow = (0xEFD633 << 8) + 0xFF
+    yellow = (0xCCB72E << 8) + 0xFF
     darkyellow = (0x857908 << 8) + 0xFF
     gold = (0xFFD700 << 8) + 0xFF
     khaki = (0xC3B091 << 8) + 0xFF
 
     # greens
-    green = (0x2BB845 << 8) + 0xFF
+    green = (0x259B3B << 8) + 0xFF
     darkgreen = (0x006400 << 8) + 0xFF
     lime = (0x229E22 << 8) + 0xFF
     teal = (0x008053 << 8) + 0xFF
 
     # blues
-    blue = (0x006EFF << 8) + 0xFF
+    blue = (0x1964C5 << 8) + 0xFF
     darkblue = (0x2323CC << 8) + 0xFF
     cyan = (0x02CAF2 << 8) + 0xFF
     aqua = (0x58FFFF << 8) + 0xFF
