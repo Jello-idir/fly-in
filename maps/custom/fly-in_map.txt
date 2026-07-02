@@ -1,6 +1,5 @@
 nb_drones: 12
 
-
 # letter F
 # ------------------------------
 start_hub:      start       0 0     [color=green max_drones=4]

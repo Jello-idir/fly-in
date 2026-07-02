@@ -23,7 +23,6 @@ START_END_HUBS_DEPTH = 7
 
 GLYPH_SIZE = 6
 
-
 ANIMATING = False
 SOLUTION_LINE = []
 DRONES_QUEUE = deque()
@@ -101,7 +100,7 @@ class HubStation(Entity):
         self.img_name = mlx.mlx_new_image(
             mlx_ptr,
             self.size[0],
-            8,
+            cfg.font["A"].height + 1,
         )
         self.img_stat = mlx.mlx_new_image(
             mlx_ptr,
@@ -357,7 +356,9 @@ class MlxWindow:
         name = hub.name
         if len(name) > 10:
             name = name[:8] + ".."
+
         name = name.upper() if uppercase else name.title()
+
         self._write_text(hub.img_name, name, (0, 0))
         mlx.mlx_image_to_window(
             self.mlx_ptr, hub.img_name,

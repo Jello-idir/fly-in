@@ -20,7 +20,7 @@ enable_name = true
 enable_drone_count = true
 
 [sizing]
-spacing = 0
+spacing = 32
 padding_x = 25 # atleast 25
 padding_y = 50 # atleast 50
 
