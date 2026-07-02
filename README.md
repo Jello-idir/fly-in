@@ -2,15 +2,12 @@
 
 <h1 style="
 color: #FFFFFF;
+font-family: 'DepartureMono Nerd font';
 font-size: 50px;
 font-weight: 800">
-FLY-IN
+FLY-iN
 </h1>
 
-<p1 style="
-color: #aaaaaa;
-">
-</p1>
 <img
 src="docs/fly-in.png"
 />
@@ -24,14 +21,14 @@ Description
 
 the project - as you read in the above section - is about navigating multiple drones through connected hubs while respecting hubs max drone capacity and connections max link capacities as efficent as possible, don't worry if you got confused already :] ill explain everything in details.
 
-### Quick overview
-
-    -  you provide a map file with the number of drones, hubs and connections between them.
-    -  the program will read the map file and create a visual representation of it.
-    -  all drones start at the start hub.
-    -  the algorithm will navigate all drones to the end while respecting constaints.
-    -  the program will display the drones moving through the hubs and connections in real time.
-    -  the program also outputs the moves of the drones in the terminal.
+<p1 style="
+color: #FFFFFF;
+font-weight: bold">
+Quick Overview:
+</p1>
+<p1 style="color: #ffffff; font-family: 'DepartureMono Nerd font';">
+you provide a map file with the number of drones, hubs and connections between them and the program will display a window with a visual representation of the hubs and connections, then it will start moving the drones from the start hub to the end hub while respecting the max capacities of hubs and connections.
+<p2>
 
 ---
 
