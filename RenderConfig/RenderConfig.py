@@ -120,7 +120,6 @@ class DroneSection(BaseModel):
     position_randomness: int = Field(default=5, ge=0, le=32)
 
 
-
 class HubSection(BaseModel):
     """ hub settings basemodel
     """
@@ -238,7 +237,7 @@ class RenderConfig(BaseModel):
             cfg["sizing"]["padding_x"] = pad_x
             cfg["sizing"]["padding_y"] = pad_y
 
-            font = Font._font_from_3_images(
+            font = Font._font_loader(
                 "assets/font/uppercase.png",
                 "assets/font/lowercase.png",
                 "assets/font/digits.png",

@@ -10,10 +10,6 @@ from Common import (
     ZoneType,
 )
 
-RED = "\033[91m"
-YELLOW = "\033[93m"
-RESET = "\033[0m"
-
 
 class MapData(BaseModel):
     """ class to represent the map data
@@ -89,9 +85,11 @@ class MapData(BaseModel):
         Returns:
             MapData: instance of MapData created from the map file
         """
-        nb_drones: int | None = None
+        nb_drones: int = 0
         hubs: dict[str, HubBase] = {}
         connections: list[ConnectionBase] = []
+        occupied_positions: set[tuple[int, int]] = set()
+        connection_pairs: set[frozenset[str]] = set()
 
         def _handle_nb_drones(match: re.Match) -> None:
             """ handle the number of drones defined in the map file
@@ -103,10 +101,9 @@ class MapData(BaseModel):
                 ValueError: if the number of drones is defined multiple times
             """
             nonlocal nb_drones
-
-            if nb_drones is not None:
-                raise ValueError("number of drones defined multiple times.")
             nb_drones = int(match.group(1))
+            if nb_drones <= 0:
+                raise ValueError("number of drones must be positive.")
 
         def _handle_hub(match: re.Match) -> None:
             """ handle a hub defined in the map file
@@ -135,7 +132,8 @@ class MapData(BaseModel):
                         "invalid hub metadata."
                     )
 
-                metadata_dict = dict(re.findall(r"(\w+)\s*=\s*(\w+)", metadata_str))
+                metadata_dict = dict(
+                    re.findall(r"(\w+)\s*=\s*(\w+)", metadata_str))
 
                 if "color" in metadata_dict:
                     try:
@@ -166,25 +164,16 @@ class MapData(BaseModel):
                 try:
                     metadata = HubMetadata(**metadata_dict)
                 except Exception as e:
-                    raise ValueError(
-                        f"invalid metadata."
-                        f"error: {e}"
-                    )
+                    raise ValueError(f"invalid metadata.\nerror: {e}")
 
             if metadata is None:
                 metadata = HubMetadata()
 
-            try:
-                x, y = int(x), int(y)
-            except ValueError:
-                raise ValueError(
-                    f"invalid coordinates {x} {y}."
-                )
+            x, y = int(x), int(y)
 
-            if (x, y) in (hub.pos for hub in hubs.values()):
-                raise ValueError(
-                    f"overlaping hubs ({x}, {y})."
-                )
+            if (x, y) in occupied_positions:
+                raise ValueError(f"overlapping hubs ({x}, {y}).")
+            occupied_positions.add((x, y))
 
             try:
                 hubs[hub_name] = HubBase(
@@ -207,22 +196,23 @@ class MapData(BaseModel):
 
             Raises:
                 ValueError: if the connection is a duplicate,
-                or if either hub in the connection is not defined
-                or if the connection data is invalid
+                or if the hubs are not defined,
+                or if the connection data is invalid,
             """
 
             hub_a, hub_b, cap = match.groups()
-            if any(
-                (hub_a == conn.hub_a and hub_b == conn.hub_b)
-                or (hub_a == conn.hub_b and hub_b == conn.hub_a)
-                for conn in connections
-            ):
-                raise ValueError("duplicate connection detected.")
 
+            if hub_a == hub_b:
+                raise ValueError("self loop connection detected.")
             if hub_a not in hubs:
                 raise ValueError(f"hub '{hub_a}' not defined.")
             if hub_b not in hubs:
                 raise ValueError(f"hub '{hub_b}' not defined.")
+
+            key = frozenset({hub_a, hub_b})
+            if key in connection_pairs:
+                raise ValueError("duplicate connection detected.")
+            connection_pairs.add(key)
 
             try:
                 connections.append(
@@ -280,7 +270,7 @@ class MapData(BaseModel):
             except ValueError as e:
                 raise ValueError(
                     f"{e}\n"
-                    f"{YELLOW}line: -> {RESET}'{first_line}'"
+                    f"line: -> '{first_line}'"
                     )
 
             for line in file:
@@ -311,7 +301,7 @@ class MapData(BaseModel):
 
                 except ValueError as e:
                     raise ValueError(f"{e}\n"
-                                     f"{YELLOW}line: --> '{line}'{RESET}")
+                                     f"line: --> '{line}'")
 
         try:
             start_hub_pos = next(
@@ -320,7 +310,6 @@ class MapData(BaseModel):
         except StopIteration:
             raise ValueError("no start_hub defined.")
 
-        nb_drones = 0 if nb_drones is None else nb_drones
         return MapData(
             nb_drones=nb_drones,
             hubs=hubs,

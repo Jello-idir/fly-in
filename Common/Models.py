@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field
 from Common import ZoneType, ColorType, HubType
 
 
@@ -24,9 +24,3 @@ class ConnectionBase(BaseModel):
     hub_a: str
     hub_b: str
     link_capacity: int = Field(default=1, gt=0)
-
-    @model_validator(mode="after")
-    def no_self_loop(self):
-        if self.hub_a == self.hub_b:
-            raise ValueError("self loop detected.")
-        return self

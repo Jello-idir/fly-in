@@ -7,6 +7,10 @@ from GraphAlgo import Graph
 from RenderConfig import RenderConfig
 
 
+RED = "\033[31m"
+RESET = "\033[0m"
+
+
 def signal_handler(sig, frame):  # type: ignore
     mlx.mlx_close_window(window.mlx_ptr)
 
@@ -20,7 +24,7 @@ if __name__ == "__main__":
     try:
         mapdata = MapData.from_file("./put_your_map_here.txt")
     except Exception as e:
-        sys.stderr.write(f"\033[31mMap Error:\033[0m {e}\n")
+        sys.stderr.write(f"{RED}Map Error:{RESET} {e}\n")
         sys.exit(1)
     # -------------------------------------
 

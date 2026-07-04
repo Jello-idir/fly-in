@@ -41,8 +41,8 @@ clean:
 lint-flake8:
 	@if [ -z "$$(command -v flake8)" ]; then \
 		echo -e "\033[33m!! WARNING";\
-		echo " * \033[0mflake8 is not installed. run 'make dev' to install development dependencies."; \
-		echo " * \033[0mor activate a virtual envirement with flake8.."; \
+		echo -e " * \033[0mflake8 is not installed. run 'make dev' to install development dependencies."; \
+		echo -e " * \033[0mor activate a virtual envirement with flake8.."; \
 	else \
 		flake8 .; \
 	fi
@@ -50,8 +50,8 @@ lint-flake8:
 lint-mypy:
 	@if [ -z "$$(command -v mypy)" ]; then \
 		echo -e "\033[33m!! WARNING";\
-		echo " * \033[0mmypy is not installed. run 'make dev' to install development dependencies."; \
-		echo " * \033[0mor activate a virtual envirement with mypy.."; \
+		echo -e " * \033[0mmypy is not installed. run 'make dev' to install development dependencies."; \
+		echo -e " * \033[0mor activate a virtual envirement with mypy.."; \
 	else \
 		mypy . $(MYPY_FLAGS); \
 	fi
@@ -59,8 +59,8 @@ lint-mypy:
 lint-mypy-strict:
 	@if [ -z "$$(command -v mypy)" ]; then \
 		echo -e "\033[33m!! WARNING";\
-		echo " * \033[0mmypy is not installed. run 'make dev' to install development dependencies."; \
-		echo " * \033[0mor activate a virtual envirement with mypy.."; \
+		echo -e " * \033[0mmypy is not installed. run 'make dev' to install development dependencies."; \
+		echo -e " * \033[0mor activate a virtual envirement with mypy.."; \
 	else \
 		mypy . --strict; \
 	fi
