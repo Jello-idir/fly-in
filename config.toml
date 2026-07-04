@@ -1,10 +1,10 @@
-# Warning: this is a config file, meant for advanced users only.
+# Warning: this is a config file, meant for devs only.
 # Changing values here may break the program or cause unexpected behavior.
-# If you don't know what you're doing, don't change anything.
+# If you don't know what you're doing, go away.
 
 [window]
 title = "Fly-in"
-min_width = 500 # atleast 500
+min_width = 500
 
 [appearance]
 theme = "light"
@@ -13,16 +13,23 @@ cenimatic_bars = false
 
 [drone]
 enable_trail = true
+trail_opacity = 0.8
 position_randomness = 10
 
 [hub]
 enable_name = true
-enable_drone_count = true
+name_color = 0xFFFFFFFF
+enable_hub_stats = true
+
+[connection]
+color = 0xFFFFFF20
+text_color = 0xFFFFFFFF
+stroke_color = 0x000000FF
 
 [sizing]
-spacing = 32
-padding_x = 25 # atleast 25
-padding_y = 50 # atleast 50
+spacing = 64
+padding_x = 100
+padding_y = 75
 
 [other]
 enable_help_tip = true

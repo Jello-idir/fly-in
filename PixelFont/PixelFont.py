@@ -1,5 +1,4 @@
 from PIL import Image
-import os
 from dataclasses import dataclass
 
 UPPERCASE = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -12,46 +11,39 @@ class Glyph:
     char: str
     width: int
     height: int
-    pixels: list[tuple[int, int, int]]
+    pixels: list[list[bool]]
 
 
-def _pack_rgba(r: int, g: int, b: int, a: int) -> int:
-    return (r << 24) | (g << 16) | (b << 8) | a
+class Font:
+    def __init__(self, glyphs: dict[str, Glyph]):
+        self.glyphs = glyphs
 
+    @classmethod
+    def _font_from_3_images(cls, uppercase_path: str, lowercase_path: str, digits_path: str) -> 'Font':
+        font: dict[str, Glyph] = {}
+        for path, charset, w, h in [
+            (uppercase_path, UPPERCASE, 6, 8),
+            (lowercase_path, LOWERCASE, 6, 8),
+            (digits_path, DIGITS, 6, 8),
+        ]:
+            for g in cls._parse_glyph(path, charset, w, h):
+                font[g.char] = g
+        return cls(font)
 
-def _parse_glyph(
-    path: str, charset: str, glyph_w: int, glyph_h: int
-) -> list[Glyph]:
-    img = Image.open(path).convert("RGBA")
-    raw = img.load()
-    glyphs = []
-    for idx, char in enumerate(charset):
-        x_off = idx * glyph_w
-        pixels = [
-            (col, row, _pack_rgba(*raw[x_off + col, row]))  # type: ignore
-            for row in range(glyph_h)
-            for col in range(glyph_w)
-            if raw[x_off + col, row][3] > 0  # type: ignore
-        ]
-        glyphs.append(
-            Glyph(
-                char=char,
-                width=glyph_w,
-                height=glyph_h,
-                pixels=pixels
-            )
-        )
-    return glyphs
-
-
-def load_font() -> dict[str, Glyph]:
-    base = os.path.dirname(os.path.abspath(__file__))
-    font: dict[str, Glyph] = {}
-    for path, charset, w, h in [
-        ("glyphs/uppercase.png", UPPERCASE, 6, 8),
-        ("glyphs/lowercase.png", LOWERCASE, 6, 8),
-        ("glyphs/digits.png", DIGITS, 6, 8),
-    ]:
-        for g in _parse_glyph(os.path.join(base, path), charset, w, h):
-            font[g.char] = g
-    return font
+    @staticmethod
+    def _parse_glyph(path: str, charset: str, glyph_w: int, glyph_h: int) -> list[Glyph]:
+        img = Image.open(path).convert("RGBA")
+        raw = img.load()
+        if not raw:
+            raise ValueError(f"Failed to load image from {path}")
+        glyphs = []
+        for i, char in enumerate(charset):
+            pixels = []
+            for y in range(glyph_h):
+                row = []
+                for x in range(glyph_w):
+                    pixel = True if raw[i * glyph_w + x, y][3] > 0 else False  # type: ignore
+                    row.append(pixel)
+                pixels.append(row)
+            glyphs.append(Glyph(char, glyph_w, glyph_h, pixels))
+        return glyphs

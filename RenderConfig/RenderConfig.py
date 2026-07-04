@@ -1,13 +1,15 @@
 from pydantic import BaseModel, Field
 from MapParser import MapData
-from PixelFont import load_font, Glyph
-import tomllib
+from PixelFont import Font, Glyph
 from PIL import Image
-from enum import Enum
-
-
 from dataclasses import dataclass
-from PIL import Image
+import tomllib
+
+
+SPACEING_DEFAULT = 32
+PADDING_X_DEFAULT = 25
+PADDING_Y_DEFAULT = 50
+MINIMUM_WINDOW_WIDTH_DEFAULT = 500
 
 
 @dataclass
@@ -25,7 +27,7 @@ class Shape:
 
     @classmethod
     def from_image(cls, path: str) -> "Shape":
-        """Loads a PNG and converts non-transparent pixels into (x, y, color) tuples.
+        """Loads a PNG and converts pixels into (x, y, color) tuples.
 
         Args:
             path: Path to the PNG asset.
@@ -83,11 +85,6 @@ class Shapes:
             hub_end=Shape.from_image(assets.hub_end)
         )
 
-SPACEING_DEFAULT = 32
-PADDING_X_DEFAULT = 25
-PADDING_Y_DEFAULT = 50
-MINIMUM_WINDOW_WIDTH_DEFAULT = 500
-
 
 class WindowSection(BaseModel):
     """ window settings basemodel
@@ -95,11 +92,13 @@ class WindowSection(BaseModel):
     title: str = "FLY-OUT"
     min_width: int = Field(ge=0)
 
+
 class AppearanceSection(BaseModel):
     """ appearance settings basemodel
     """
     background_color: int = 0x00000080
     cenimatic_bars: bool = True
+
 
 class AssetsSection(BaseModel):
     """ assets settings basemodel
@@ -112,18 +111,30 @@ class AssetsSection(BaseModel):
     hub_start: str
     hub_end: str
 
+
 class DroneSection(BaseModel):
     """ drone settings basemodel
     """
     enable_trail: bool = True
+    trail_opacity: float = Field(default=1, ge=0, le=1)
     position_randomness: int = Field(default=5, ge=0, le=32)
+
 
 
 class HubSection(BaseModel):
     """ hub settings basemodel
     """
     enable_name: bool = True
+    name_color: int = 0xFFFFFFFF
     enable_drone_count: bool = True
+
+
+class ConnectionSection(BaseModel):
+    """ hub settings basemodel
+    """
+    color: int = 0xFFFFFF50
+    text_color: int = 0xFFFFFFFF
+    stroke_color: int = 0xFFFFFFFF
 
 
 class SizingSection(BaseModel):
@@ -149,6 +160,7 @@ class RenderConfig(BaseModel):
     appearance: AppearanceSection
     drone: DroneSection
     hub: HubSection
+    connection: ConnectionSection
     sizing: SizingSection
     other: OtherSection
 
@@ -201,7 +213,7 @@ class RenderConfig(BaseModel):
             }
             shapes = Shapes.from_assets(AssetsSection(**assets))
 
-            # calculate window size based on map size, hub size, spacing, and padding
+            # calculate window size, hub size, spacing, and padding
             hub_size = max(shapes.hub.width, shapes.hub.height)
             spacing = cfg.get("sizing", {}).get("spacing", SPACEING_DEFAULT)
 
@@ -226,11 +238,18 @@ class RenderConfig(BaseModel):
             cfg["sizing"]["padding_x"] = pad_x
             cfg["sizing"]["padding_y"] = pad_y
 
+            font = Font._font_from_3_images(
+                "assets/font/uppercase.png",
+                "assets/font/lowercase.png",
+                "assets/font/digits.png",
+            ).glyphs
+
         return cls(
             window=cfg["window"],
             appearance=cfg["appearance"],
             drone=cfg["drone"],
             hub=cfg["hub"],
+            connection=cfg["connection"],
             sizing=cfg["sizing"],
             other=cfg["other"],
             window_size=(abs_width, abs_height),
@@ -238,6 +257,6 @@ class RenderConfig(BaseModel):
             paddin=(pad_x, pad_y),
             cell=hub_size,
             space=spacing,
-            font=load_font(),
+            font=font,
             shapes=shapes,
         )

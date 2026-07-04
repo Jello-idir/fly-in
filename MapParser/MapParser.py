@@ -130,12 +130,12 @@ class MapData(BaseModel):
 
             if metadata_str:
                 metadata_str = metadata_str.strip()
-                if not re.fullmatch(r"(\w+=\w+\s*)*", metadata_str):
+                if not re.fullmatch(r"(\w+\s*=\s*\w+\s*)*", metadata_str):
                     raise ValueError(
                         "invalid hub metadata."
                     )
 
-                metadata_dict = dict(re.findall(r"(\w+)=(\w+)", metadata_str))
+                metadata_dict = dict(re.findall(r"(\w+)\s*=\s*(\w+)", metadata_str))
 
                 if "color" in metadata_dict:
                     try:
@@ -251,7 +251,7 @@ class MapData(BaseModel):
         m_connections = re.compile(
             r"""
             connection\s*:\s*(\w+)-(\w+)
-            (?:\s+\[\s*max_link_capacity=(\d+)\s*\])?
+            (?:\s+\[\s*max_link_capacity\s*=\s*(\d+)\s*\])?
             $
             """,
             re.X,

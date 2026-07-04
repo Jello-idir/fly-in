@@ -14,21 +14,29 @@ import random
 import sys
 import time
 
-BG_DEPTH = 1
-HUB_DEPTH = 3
-STATS_DEPTH = 4
-DRONE_DEPTH = 5
-DRONE_TRAIL_DEPTH = 6
-START_END_HUBS_DEPTH = 7
 
-GLYPH_SIZE = 6
+# depths
+DEPTH_BG = 1
+DEPTH_SIMULATION_TURNS = 8
 
+
+# hub
+DEPTH_HUB = 3
+DEPTH_HUB_NAME = 4
+DEPTH_HUB_STATS = 4
+DEPTH_START_END_HUB = 7
+MARGIN_HUB_STATS = 2
+
+# drone depths
+DEPTH_DRONE = 6
+DEPTH_DRONE_TRAIL = 2
+
+# Animation control variables
 ANIMATING = False
 SOLUTION_LINE = []
 DRONES_QUEUE = deque()
 STEPS = 80
 STEP_IDX = STEPS
-
 ANIMATION_FPS = 120
 STEP_INTERVAL = 1 / ANIMATION_FPS
 LAST_STEP_TIME = 0.0
@@ -46,10 +54,7 @@ class Entity:
         self.color = color
         self.shape = shape
         self.coord = coord
-        self.size = (
-            max(x[0] for x in shape.pixels) + 1,
-            max(y[1] for y in shape.pixels) + 1
-            )
+        self.size = (shape.width, shape.height)
         self.pos = (
             int((coord[0] - cfg.min_coord[0])
                 * (cfg.cell + cfg.space) + cfg.paddin[0]),
@@ -100,12 +105,12 @@ class HubStation(Entity):
         self.img_name = mlx.mlx_new_image(
             mlx_ptr,
             self.size[0],
-            cfg.font["A"].height + 1,
+            cfg.font["A"].height,
         )
         self.img_stat = mlx.mlx_new_image(
             mlx_ptr,
             64,
-            8,
+            cfg.font["A"].height,
         )
 
     @staticmethod
@@ -219,12 +224,11 @@ class MlxWindow:
                 img.contents.pixels[idx + 2] = color >> 8 & 0xFF
                 img.contents.pixels[idx + 3] = color & 0xFF
 
-
     def _draw_window_stats(
         self, turn_count: int | None = None,
         size: int = 1, color: int = 0xFFFFFFFF
     ):
-        if not turn_count:
+        if turn_count is None:
             turn_count = self._turns_count
         self._fill_image(self.img_stats, 0x00000000)
         total_turns_count = len(self._solution.splitlines())
@@ -266,37 +270,28 @@ class MlxWindow:
     ) -> None:
         init_x, init_y = pos
         x, y = init_x, init_y
-
         for c in text:
             if c == "\n":
                 y += 10 * size
                 x = init_x
                 continue
-            for px, py, _ in self.cfg.font[c].pixels:
-                for sy in range(size):
-                    for sx in range(size):
-                        actual_x = px * size + x + sx
-                        actual_y = py * size + y + sy
-                        idx = (actual_y * img.contents.width + actual_x) * 4
-
-                        # pixel
-                        img.contents.pixels[idx] = color >> 24 & 0xFF
-                        img.contents.pixels[idx + 1] = color >> 16 & 0xFF
-                        img.contents.pixels[idx + 2] = color >> 8 & 0xFF
-                        img.contents.pixels[idx + 3] = color & 0xFF
-
-                        # shadow
-                        sidx = (
-                            (
-                                actual_y + 1
-                            ) * img.contents.width + (actual_x + 1)
-                        ) * 4
-                        img.contents.pixels[sidx] = 0
-                        img.contents.pixels[sidx + 1] = 0
-                        img.contents.pixels[sidx + 2] = 0
-                        img.contents.pixels[sidx + 3] = 255
-
-            x += self.cfg.font[c].width * size
+            glyph = self.cfg.font.get(c)
+            if not glyph:
+                raise ValueError(f"Glyph for character '{c}' not found in font.")
+            for row_idx, row in enumerate(glyph.pixels):
+                for pixel_idc, pixel in enumerate(row):
+                    if pixel:
+                        for sy in range(size):
+                            for sx in range(size):
+                                px = x + pixel_idc * size + sx
+                                py = y + row_idx * size + sy
+                                if 0 <= px < img.contents.width and 0 <= py < img.contents.height:
+                                    idx = (py * img.contents.width + px) * 4
+                                    img.contents.pixels[idx] = color >> 24 & 0xFF
+                                    img.contents.pixels[idx + 1] = color >> 16 & 0xFF
+                                    img.contents.pixels[idx + 2] = color >> 8 & 0xFF
+                                    img.contents.pixels[idx + 3] = color & 0xFF
+            x += glyph.width * size
 
     def _draw_entity(self, entity: Entity) -> None:
         hub_color = entity.color
@@ -343,12 +338,12 @@ class MlxWindow:
             pos = entity.pos
         mlx.mlx_image_to_window(self.mlx_ptr, entity.img, pos[0], pos[1])
         if isinstance(entity, HubStation):
-            depth = HUB_DEPTH
+            depth = DEPTH_HUB
             if entity.type in (HubType.start_hub, HubType.end_hub):
-                depth = START_END_HUBS_DEPTH + len(self.drones)
+                depth = DEPTH_START_END_HUB + len(self.drones)
             entity.img.contents.instances[0].z = depth
         elif isinstance(entity, Drone):
-            entity.img.contents.instances[0].z = DRONE_DEPTH + entity.id
+            entity.img.contents.instances[0].z = DEPTH_DRONE + entity.id
 
     def _draw_attach_hub_name(
             self, hub: HubStation, uppercase: bool = True
@@ -359,14 +354,14 @@ class MlxWindow:
 
         name = name.upper() if uppercase else name.title()
 
-        self._write_text(hub.img_name, name, (0, 0))
+        self._write_text(hub.img_name, name, (0, 0), color=self.cfg.hub.name_color)
         mlx.mlx_image_to_window(
             self.mlx_ptr, hub.img_name,
             hub.pos[0], hub.pos[1] - 10
         )
-        hub.img.contents.instances[0].z = HUB_DEPTH
+        hub.img_name.contents.instances[0].z = DEPTH_HUB_NAME
 
-    def _draw_drone_count(
+    def _draw_hub_stats(
             self, hub: HubStation, uppercase: bool = False
             ) -> None:
         n_of_drones = len(hub.drones)
@@ -384,20 +379,20 @@ class MlxWindow:
         stats = stats.upper() if uppercase else stats.title()
         self._write_text(hub.img_stat, stats, (0, 0), color=color)
 
-    def _draw_attach_drone_count(
+    def _draw_attach_hub_stats(
         self, hub: HubStation, uppercase: bool = False
     ) -> None:
-        self._draw_drone_count(hub, uppercase=uppercase)
+        self._draw_hub_stats(hub, uppercase=uppercase)
         mlx.mlx_image_to_window(
-            self.mlx_ptr, hub.img_stat, hub.pos[0], hub.pos[1] + hub.size[1]
+            self.mlx_ptr, hub.img_stat, hub.pos[0], hub.pos[1] + hub.size[1] + MARGIN_HUB_STATS
         )
-        hub.img.contents.instances[0].z = STATS_DEPTH
+        hub.img_stat.contents.instances[0].z = DEPTH_HUB_STATS
 
-    def _update_drone_count(
+    def _update_hub_stats(
             self, hub: HubStation, is_upper: bool = False
             ) -> None:
         self._fill_image(hub.img_stat, 0x00000000)
-        self._draw_attach_drone_count(hub, uppercase=is_upper)
+        self._draw_hub_stats(hub, uppercase=is_upper)
 
     def _draw_line(
         self,
@@ -422,9 +417,12 @@ class MlxWindow:
         for _ in range(steps):
             for j in range(-thickness, thickness + 1):
                 for i in range(-thickness, thickness + 1):
-                    idx = (
-                        (int(y) + j) * img.contents.width + (int(x) + i)
-                        ) * 4
+                    px = int(x) + i
+                    py = int(y) + j
+                    # bounds shecking
+                    if not (0 <= px < img.contents.width and 0 <= py < img.contents.height):
+                        continue
+                    idx = (py * img.contents.width + px) * 4
                     img.contents.pixels[idx] = color >> 24 & 0xFF
                     img.contents.pixels[idx + 1] = color >> 16 & 0xFF
                     img.contents.pixels[idx + 2] = color >> 8 & 0xFF
@@ -432,6 +430,19 @@ class MlxWindow:
 
             x += x_inc
             y += y_inc
+
+    def _draw_line_with_stroke(
+        self,
+        img,
+        start: tuple[int, int],
+        end: tuple[int, int],
+        color: int = 0xFFFFFFAA,
+        thickness: int = 0,
+    ) -> None:
+        stroke_color = self.cfg.connection.stroke_color
+        self._draw_line(img, start, end, color=stroke_color, thickness=thickness + 1)
+        self._draw_line(img, start, end, color=color, thickness=thickness)
+
 
     def _draw_connections(self, color: int = 0xFFFFFF50) -> None:
         for conn in self.connections:
@@ -445,7 +456,7 @@ class MlxWindow:
             y2 = hub_b.pos[1] + hub_b.size[1] // 2
 
             # thickness based on capacity
-            self._draw_line(
+            self._draw_line_with_stroke(
                 self.img_bg,
                 (x1, y1),
                 (x2, y2),
@@ -455,12 +466,17 @@ class MlxWindow:
 
             # calculating position for capacity text
             capacity_text = str(conn.capacity)
-            text_width = len(capacity_text) * 8
+            text_width = len(capacity_text) * self.cfg.font["A"].width
             text_x = int((x1 + x2) / 2 - text_width / 2 + 2)
             text_y = int((y1 + y2) / 2 - 3)
 
             # write capacity
-            self._write_text(self.img_bg, capacity_text, (text_x, text_y))
+            self._write_text(
+                self.img_bg,
+                capacity_text,
+                (text_x, text_y),
+                color=self.cfg.connection.text_color
+                )
 
     def _animate_drones(self) -> None:
         global STEP_IDX
@@ -472,7 +488,6 @@ class MlxWindow:
                 drone.img.contents.instances[0].y,
             )
 
-            # bazier curve for more natural movement
             pos_to = (
                 int(
                     start_pos[0]
@@ -489,6 +504,8 @@ class MlxWindow:
 
             # draw trail in img_trails
             if self.cfg.drone.enable_trail:
+                color = drone.color & 0xFFFFFF00 | int(
+                    self.cfg.drone.trail_opacity * 255)
                 self._draw_line(
                     self.img_trail,
                     (
@@ -499,11 +516,11 @@ class MlxWindow:
                         pos_to[0] + drone.size[0] // 2,
                         pos_to[1] + drone.size[1] // 2
                     ),
-                    color=drone.color,
+                    color=color
                 )
             if STEP_IDX == 0:
 
-                # drone has reached its destination
+                # drone has reached end
                 if (
                     isinstance(dest, HubStation)
                     and dest.type == HubType.end_hub
@@ -511,16 +528,13 @@ class MlxWindow:
                     drone.img.contents.enabled = False
 
                 # update drone location and position
-                if self.cfg.hub.enable_drone_count:
-                    if isinstance(dest, HubStation):
-                        self._update_drone_count(dest)
-                    if isinstance(drone.location, HubStation):
-                        self._update_drone_count(drone.location)
-
                 drone.location = dest
                 drone.pos = (end_pos[0], end_pos[1])
 
         if STEP_IDX == 0:
+            # update hub stats
+            for hub in self.hubs.values():
+                self._update_hub_stats(hub, is_upper=True)
             SOLUTION_LINE.clear()
             DRONES_QUEUE.clear()
             STEP_IDX = STEPS
@@ -534,7 +548,7 @@ class MlxWindow:
             return
 
         # setting up queue for queue animation
-        for move in SOLUTION_LINE:
+        for move in list(SOLUTION_LINE):
 
             # going to a hub
             try:
@@ -562,10 +576,16 @@ class MlxWindow:
                     hub_b = self.hubs[hub_b_name]
 
                     dest = next(
-                        conn
-                        for conn in hub_a.connections
-                        if (conn.hub_a == hub_b or conn.hub_b == hub_b)
+                        (conn for conn in hub_a.connections
+                        if (conn.hub_a == hub_b or conn.hub_b == hub_b)),
+                        None
                     )
+                    if dest is None:
+                        sys.stderr.write(
+                            f"\033[33m!!WARNING: \033[0mNo connection between "
+                            f"'{hub_a_name}' and '{hub_b_name}'. Skipping.\n"
+                            )
+                        continue
                     # start and end should be the center of connection
                     start_pos = (
                         drone.img.contents.instances[0].x,
@@ -587,7 +607,13 @@ class MlxWindow:
                 continue
 
             # remove drone from prev location
-            drone.location.drones.remove(drone)
+            try:
+                drone.location.drones.remove(drone)
+            except ValueError:
+                sys.stderr.write(
+                    f"\033[33m!!WARNING: \033[0mDrone {drone.id} "
+                    f"not found in location drones. Skipping.\n"
+                )
 
             # add drone to new location
             dest.drones.append(drone)
@@ -673,8 +699,13 @@ class MlxWindow:
 
         # background image
         mlx.mlx_image_to_window(self.mlx_ptr, self.img_bg, 0, 0)
-        self.img_bg.contents.instances[0].z = BG_DEPTH
+        self.img_bg.contents.instances[0].z = DEPTH_BG
         self._fill_image(self.img_bg, self.cfg.appearance.background_color)
+
+        # drone trails image
+        if self.cfg.drone.enable_trail:
+            mlx.mlx_image_to_window(self.mlx_ptr, self.img_trail, 0, 0)
+            self.img_trail.contents.instances[0].z = DEPTH_DRONE_TRAIL
 
         # cenimatic black bars
         if self.cfg.appearance.cenimatic_bars:
@@ -683,7 +714,8 @@ class MlxWindow:
         # window title
         title = self.cfg.window.title.upper()
         centered_title_x = (
-            self.cfg.window_size[0] // 2 - len(title) * GLYPH_SIZE
+            self.cfg.window_size[0] // 2 - len(title)
+            * self.cfg.font["A"].width // 2
             )
         self._write_text(
             self.img_bg, title, (centered_title_x, 15),
@@ -694,7 +726,8 @@ class MlxWindow:
         if self.cfg.other.enable_help_tip:
             help_tip = self.cfg.other.help_tip_text
             tip_pos = (
-                self.cfg.window_size[0] // 2 - len(help_tip) * GLYPH_SIZE // 2,
+                self.cfg.window_size[0] // 2 - len(help_tip)
+                * self.cfg.font["A"].width // 2,
                 self.cfg.window_size[1] - 25,
             )
             self._write_text(
@@ -709,7 +742,7 @@ class MlxWindow:
             if self.cfg.hub.enable_name:
                 self._draw_attach_hub_name(hub)
             if self.cfg.hub.enable_drone_count:
-                self._draw_attach_drone_count(hub)
+                self._draw_attach_hub_stats(hub)
 
         # draw drones in start hub and attach them
         start_hub = next(
@@ -740,7 +773,7 @@ class MlxWindow:
             self._attach_entity(drone, drone.pos)
 
         # draw connections
-        self._draw_connections()
+        self._draw_connections(color=self.cfg.connection.color)
 
         # animate solution if provided
         if solution:
@@ -750,6 +783,7 @@ class MlxWindow:
             # draw stats image and attach it
             self._draw_window_stats(size=1, color=0xFFFFFFAA)
             mlx.mlx_image_to_window(self.mlx_ptr, self.img_stats, 10, 10)
+            self.img_stats.contents.instances[0].z = DEPTH_SIMULATION_TURNS
 
         # hooking the key and loop functions
         self._hook_func_cb = ctypes.CFUNCTYPE(
