@@ -34,7 +34,14 @@ DEPTH_DRONE_TRAIL = 2
 # Animation control variables
 ANIMATING = False
 SOLUTION_LINE: list[str] = []
-DRONES_QUEUE: deque = deque()
+DRONES_QUEUE: deque[
+    tuple[
+        'Drone',
+        tuple[int, int],
+        tuple[int, int],
+        'HubStation | Connection'
+        ]
+    ] = deque()
 STEPS = 80
 STEP_IDX = STEPS
 ANIMATION_FPS = 120
@@ -47,19 +54,17 @@ class Entity:
         self,
         mlx_ptr: mlx_t,
         cfg: RenderConfig,
-        coord: tuple[int, int],
+        cord: tuple[int, int],
         color: int,
         shape: Shape,
     ):
         self.color = color
         self.shape = shape
-        self.coord = coord
+        self.coord = cord
         self.size = (shape.width, shape.height)
         self.pos = (
-            int((coord[0] - cfg.min_coord[0])
-                * (cfg.cell + cfg.space) + cfg.paddin[0]),
-            int((coord[1] - cfg.min_coord[1])
-                * (cfg.cell + cfg.space) + cfg.paddin[1]),
+            int((cord[0]) * (cfg.cell + cfg.space) + cfg.paddin[0]),
+            int((cord[1]) * (cfg.cell + cfg.space) + cfg.paddin[1]),
         )
 
         self.img = mlx.mlx_new_image(
@@ -166,7 +171,7 @@ class MlxWindow:
         self.drones: dict[int, Drone] = {}
         self.cfg: RenderConfig = cfg
         self._solution: str = ""
-        self._solution_queue: deque = deque()
+        self._solution_queue: deque[str] = deque()
         self._turns_count: int = 0
 
         self.img_bg = mlx.mlx_new_image(
@@ -532,8 +537,8 @@ class MlxWindow:
                 ),
             )
 
-            drone.img.contents.instances[0].x = pos_to[0]
             drone.img.contents.instances[0].y = pos_to[1]
+            drone.img.contents.instances[0].x = pos_to[0]
 
             # draw trail in img_trails
             if self.cfg.drone.enable_trail:
@@ -685,9 +690,9 @@ class MlxWindow:
             except IndexError:
                 ANIMATING = False
 
-    def _loop_hook(self,
-                   param: ctypes.c_void_p = None  # type: ignore
-                   ) -> None:
+    def _loop_hook(
+            self, param: ctypes.c_void_p = None  # type: ignore
+            ) -> None:
         global LAST_STEP_TIME
 
         if not ANIMATING:

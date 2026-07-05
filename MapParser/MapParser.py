@@ -1,5 +1,5 @@
 import re
-from pydantic import BaseModel, Field, computed_field, model_validator
+from pydantic import BaseModel, Field, model_validator
 from Common import (
     DroneBase,
     HubBase,
@@ -21,22 +21,7 @@ class MapData(BaseModel):
     hubs: dict[str, HubBase]
     connections: list[ConnectionBase]
     drones: dict[int, DroneBase]
-
-    @computed_field
-    @property
-    def bounding_box(self) -> tuple[int, int, int, int]:
-        """ property to return the bounding box of the map
-
-        Returns:
-            tuple[int, int, int, int]: (min_x, max_x, min_y, max_y) of the map
-        """
-        if not self.hubs:
-            return (0, 0, 0, 0)
-        min_x = min(hub.pos[0] for hub in self.hubs.values())
-        max_x = max(hub.pos[0] for hub in self.hubs.values())
-        min_y = min(hub.pos[1] for hub in self.hubs.values())
-        max_y = max(hub.pos[1] for hub in self.hubs.values())
-        return (min_x, max_x, min_y, max_y)
+    size: tuple[int, int]
 
     @model_validator(mode="after")
     def validate_map(self) -> "MapData":
@@ -91,7 +76,7 @@ class MapData(BaseModel):
         occupied_positions: set[tuple[int, int]] = set()
         connection_pairs: set[frozenset[str]] = set()
 
-        def _handle_nb_drones(match: re.Match) -> None:
+        def _handle_nb_drones(match: re.Match[str]) -> None:
             """ handle the number of drones defined in the map file
 
             Args:
@@ -105,7 +90,7 @@ class MapData(BaseModel):
             if nb_drones <= 0:
                 raise ValueError("number of drones must be positive.")
 
-        def _handle_hub(match: re.Match) -> None:
+        def _handle_hub(match: re.Match[str]) -> None:
             """ handle a hub defined in the map file
 
             Args:
@@ -188,7 +173,7 @@ class MapData(BaseModel):
                     f"error: {e}"
                 )
 
-        def _handle_connection(match: re.Match) -> None:
+        def _handle_connection(match: re.Match[str]) -> None:
             """ handle a connection defined in the map file
 
             Args:
@@ -310,6 +295,28 @@ class MapData(BaseModel):
         except StopIteration:
             raise ValueError("no start_hub defined.")
 
+        # calculating boundries
+        bounding_box = (0, 0, 0, 0)
+        for hub in hubs.values():
+            x, y = hub.pos
+            min_x, max_x, min_y, max_y = bounding_box
+            bounding_box = (
+                min(min_x, x),
+                max(max_x, x),
+                min(min_y, y),
+                max(max_y, y),
+            )
+
+        # adjusting hub position offset
+        for hub in hubs.values():
+            x, y = hub.pos
+            hub.pos = (x - bounding_box[0], y - bounding_box[2])
+
+        mapsize = (
+            bounding_box[1] - bounding_box[0] + 1,
+            bounding_box[3] - bounding_box[2] + 1
+            )
+
         return MapData(
             nb_drones=nb_drones,
             hubs=hubs,
@@ -318,4 +325,5 @@ class MapData(BaseModel):
                 i: DroneBase(id=i, coord=start_hub_pos)
                 for i in range(1, nb_drones + 1)
             },
+            size=mapsize
         )

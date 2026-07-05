@@ -7,7 +7,7 @@ title = "Fly-in"
 min_width = 500
 
 [appearance]
-theme = "light"
+theme = "dark"
 background_color = 0x202020ff
 cenimatic_bars = false
 

@@ -165,7 +165,6 @@ class RenderConfig(BaseModel):
 
     # from map + config file
     window_size: tuple[int, int]
-    min_coord: tuple[int, int]
     paddin: tuple[int, int]
     cell: int
     space: int
@@ -191,9 +190,9 @@ class RenderConfig(BaseModel):
             # load toml as dict
             cfg = tomllib.load(f)
 
-            min_x, max_x, min_y, max_y = mapdata.bounding_box
-            map_width = max_x - min_x + 1
-            map_height = max_y - min_y + 1
+            size_x, size_y = mapdata.size
+            map_width = size_x
+            map_height = size_y
 
             min_width = cfg.get("window", {}).get(
                 "min_width", MINIMUM_WINDOW_WIDTH_DEFAULT
@@ -252,7 +251,6 @@ class RenderConfig(BaseModel):
             sizing=cfg["sizing"],
             other=cfg["other"],
             window_size=(abs_width, abs_height),
-            min_coord=(min_x, min_y),
             paddin=(pad_x, pad_y),
             cell=hub_size,
             space=spacing,

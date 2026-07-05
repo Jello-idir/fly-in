@@ -14,10 +14,14 @@ RESET = "\033[0m"
 def signal_handler(sig, frame):  # type: ignore
     mlx.mlx_close_window(window.mlx_ptr)
 
+def signal_handler2(sig, frame):  # type: ignore
+    print("im being terminatted")
+
 
 if __name__ == "__main__":
     # Set up signal handler for graceful exit on Ctrl+C
     signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler2)
     # ---------------------------------------
 
     # parsing

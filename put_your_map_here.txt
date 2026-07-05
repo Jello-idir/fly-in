@@ -2,7 +2,7 @@
 
 nb_drones: 120
 
-start_hub:      start       0 -1        [color=yellow]
+start_hub:      start       0 -1        [color=white]
 
 hub:            g           1 0         [color=blue zone=restricted max_drones=9]
 hub:            hood        0 1         [color=black zone=priority]
