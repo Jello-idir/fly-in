@@ -21,6 +21,8 @@ class ColorType(int, Enum):
     magenta = (0xEF5AB6 << 8) + 0xFF
     pink = (0xFF69B4 << 8) + 0xFF
     purple = (0xB609B6 << 8) + 0xFF
+    maroon = (0x800000 << 8) + 0xFF
+    crimson = (0xDC143C << 8) + 0xFF
 
     darkred = (0x7F2B2C << 8) + 0xFF
     darkgreen = (0x006400 << 8) + 0xFF

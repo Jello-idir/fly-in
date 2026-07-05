@@ -11,6 +11,19 @@ PADDING_X_DEFAULT = 25
 PADDING_Y_DEFAULT = 50
 MINIMUM_WINDOW_WIDTH_DEFAULT = 500
 
+# themes prefix
+THEMES_PREFIX = "assets/themes/"
+
+ASSETS_LIST = [
+    "drone",
+    "hub",
+    "hub_restricted",
+    "hub_priority",
+    "hub_blocked",
+    "hub_start",
+    "hub_end",
+]
+
 
 @dataclass
 class Shape:
@@ -35,7 +48,20 @@ class Shape:
         Returns:
             A Shape with pixels, width, and height populated.
         """
-        img = Image.open(path).convert("RGBA")
+
+        try:
+            with open(path, "rb") as f:
+                if not f.read(8).startswith(b"\x89PNG\r\n\x1a\n"):
+                    raise ValueError(f"File is not a valid PNG: {path}")
+                pass
+        except FileNotFoundError:
+            raise FileNotFoundError(f"Asset not found: {path}")
+
+        try:
+            img = Image.open(path).convert("RGBA")
+        except Exception as e:
+            raise RuntimeError(f"Failed to load image {path}: {e}")
+
         pixels = set()
         for y in range(img.height):
             for x in range(img.width):
@@ -43,6 +69,8 @@ class Shape:
                 if a > 0:
                     color = (r << 24) | (g << 16) | (b << 8) | a
                     pixels.add((x, y, color))
+
+        img.close()
 
         return cls(
             pixels=pixels,
@@ -75,6 +103,7 @@ class Shapes:
         Returns:
             A Shapes instance with every shape loaded.
         """
+
         return cls(
             drone=Shape.from_image(assets.drone),
             hub=Shape.from_image(assets.hub),
@@ -151,7 +180,7 @@ class OtherSection(BaseModel):
     help_tip_text: str = ""
 
 
-class RenderConfig(BaseModel):
+class Config(BaseModel):
     """ render config basemodel
     """
     # from config file — nested, same shape as AppConfig
@@ -176,7 +205,7 @@ class RenderConfig(BaseModel):
     @classmethod
     def from_mapdata(
         cls, mapdata: MapData, config_path: str = "config.toml"
-    ) -> RenderConfig:
+    ) -> Config:
         """ class method to create a RenderConfig from a MapData
 
         Args:
@@ -200,15 +229,11 @@ class RenderConfig(BaseModel):
 
             # load assets based on theme
             theme = cfg.get("appearance", {}).get("theme", "default")
-            assets = {
-                "drone": f"assets/{theme}/drone.png",
-                "hub": f"assets/{theme}/hub.png",
-                "hub_restricted": f"assets/{theme}/hub_restricted.png",
-                "hub_priority": f"assets/{theme}/hub_priority.png",
-                "hub_blocked": f"assets/{theme}/hub_blocked.png",
-                "hub_start": f"assets/{theme}/hub_start.png",
-                "hub_end": f"assets/{theme}/hub_end.png",
-            }
+            assets: dict[str, str] = {}
+            for asset in ASSETS_LIST:
+                assets[asset] = THEMES_PREFIX + theme + "/" + asset + ".png"
+
+            # adding prefix
             shapes = Shapes.from_assets(AssetsSection(**assets))
 
             # calculate window size, hub size, spacing, and padding

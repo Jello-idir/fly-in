@@ -1,0 +1,11 @@
+nb_drones: 4
+
+start_hub:      START     0 0       [color=yellow]
+hub:            L1        0 1       [color=white]
+hub:            E1        1 0       [color=red zone=restricted]
+end_hub:        END       1 -1      [color=red zone=non_existent]
+
+
+connection:     START-L1            [max_link_capacity=3]
+connection:     L1-E1               [max_link_capacity=3]
+connection:     E1-END              [max_link_capacity=2]

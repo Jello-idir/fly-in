@@ -213,7 +213,7 @@ class MapData(BaseModel):
                     f"error: {e}"
                 )
 
-        m_drones = re.compile(r"nb_drones\s*:\s*(\d+)\s*$")
+        m_drones = re.compile(r"nb_drones\s*:\s*(-?\d+)\s*$")
         m_hubs = re.compile(
             r"""
             (start_hub|hub|end_hub)\s*:\s*(\w+)

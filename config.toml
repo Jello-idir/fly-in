@@ -7,7 +7,7 @@ title = "Fly-in"
 min_width = 500
 
 [appearance]
-theme = "dark"
+theme = "light"
 background_color = 0x202020ff
 cenimatic_bars = false
 
@@ -27,10 +27,10 @@ text_color = 0xFFFFFFFF
 stroke_color = 0x000000FF
 
 [sizing]
-spacing = 64
+spacing = 48
 padding_x = 100
 padding_y = 75
 
 [other]
 enable_help_tip = true
-help_tip_text = "SPACE to pause/resume  |  LEFT/RIGHT to change speed  |  ESC or Q to quit"
+help_tip_text = "SPACE  pause/resume  |  < / >  speed  |  ESC/Q  quit  | T  drone trails"
