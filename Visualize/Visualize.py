@@ -1,6 +1,14 @@
 from MLX.libmlx import (
-    mlx, MLX_KEY_ESCAPE, MLX_KEY_Q, MLX_KEY_SPACE,
-    MLX_KEY_RIGHT, MLX_KEY_LEFT, MLX_KEY_T, mlx_image_t, mlx_t
+    mlx,
+    MLX_KEY_ESCAPE,
+    MLX_KEY_Q,
+    MLX_KEY_SPACE,
+    MLX_KEY_RIGHT,
+    MLX_KEY_LEFT,
+    MLX_KEY_T,
+    MLX_KEY_R,
+    mlx_image_t,
+    mlx_t
 )
 from Common import (
     HubBase, DroneBase, HubMetadata, HubType, ZoneType, ColorType
@@ -243,17 +251,14 @@ class MlxWindow:
 
     def _draw_window_stats(
         self,
-        turn_count: int | None = None,
         size: int = 1,
         color: int = 0xFFFFFFFF
     ) -> None:
-        if turn_count is None:
-            turn_count = self._turns_count
         self._fill_image(self.img_stats, 0x00000000)
         total_turns_count = len(self._solution.splitlines())
         self._write_text(
             self.img_stats,
-            f"Turn: {turn_count}/{total_turns_count}",
+            f"Turn: {self._turns_count}/{total_turns_count}",
             (0, 0),
             size=size,
             color=color,
@@ -526,11 +531,13 @@ class MlxWindow:
         # clear animating variable
         global ANIMATING
         global LAST_STEP_TIME
+        global STEP_IDX
 
         ANIMATING = False
         SOLUTION_LINE.clear()
         DRONES_QUEUE.clear()
         LAST_STEP_TIME = 0
+        STEP_IDX = STEPS
 
         start_hub = next(
             hub for hub in self.hubs.values()
@@ -791,6 +798,13 @@ class MlxWindow:
         if mlx.mlx_is_key_down(self.mlx_ptr, MLX_KEY_T):
             self.cfg.drone.enable_trail = not self.cfg.drone.enable_trail
             self.img_trail.contents.enabled = self.cfg.drone.enable_trail
+
+        # restart animation
+        if mlx.mlx_is_key_down(self.mlx_ptr, MLX_KEY_R):
+            self._reset_simulation()
+            self._turns_count = 0
+            self._fill_image(self.img_trail, 0x00000000)
+            self._draw_window_stats()
 
     def run(
         self,

@@ -13,7 +13,6 @@ MINIMUM_WINDOW_WIDTH_DEFAULT = 500
 
 # themes prefix
 THEMES_PREFIX = "assets/themes/"
-
 ASSETS_LIST = [
     "drone",
     "hub",
