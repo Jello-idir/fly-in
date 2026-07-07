@@ -33,4 +33,4 @@ padding_y = 75
 
 [other]
 enable_help_tip = true
-help_tip_text = "SPACE  pause/resume  |  < / >  speed  |  ESC/Q  quit  | T  drone trails  |  R  reset"
+help_tip_text = "SPACE : pause/resume      < > : speed      ESC/Q : quit      T : drone trails      R : reset"

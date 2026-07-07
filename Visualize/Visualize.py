@@ -296,6 +296,7 @@ class MlxWindow:
         size: int = 1,
         color: int = 0xFFFFFFFF,
     ) -> None:
+        is_trancated = False
         init_x, init_y = pos
         x, y = init_x, init_y
         buffer = img.contents.pixels
@@ -323,6 +324,12 @@ class MlxWindow:
                                     buffer[idx + 1] = color >> 16 & 0xFF
                                     buffer[idx + 2] = color >> 8 & 0xFF
                                     buffer[idx + 3] = color & 0xFF
+                                elif not is_trancated:
+                                    sys.stderr.write(
+                                        "Warning: Text trancated! to solve it, you may "
+                                        "increase minimum window width in config file.\n"
+                                    )
+                                    is_trancated = True
             x += glyph.width * size
 
     def _draw_entity(self, entity: Entity) -> None:
