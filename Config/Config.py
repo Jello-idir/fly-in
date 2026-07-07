@@ -3,7 +3,7 @@ from MapParser import MapData
 from PixelFont import Font, Glyph
 from PIL import Image
 from dataclasses import dataclass
-import tomllib
+import tomli
 
 
 SPACEING_DEFAULT = 32
@@ -204,7 +204,7 @@ class Config(BaseModel):
     @classmethod
     def from_mapdata(
         cls, mapdata: MapData, config_path: str = "config.toml"
-    ) -> Config:
+    ) -> 'Config':
         """ class method to create a RenderConfig from a MapData
 
         Args:
@@ -216,7 +216,7 @@ class Config(BaseModel):
         """
         with open(config_path, "rb") as f:
             # load toml as dict
-            cfg = tomllib.load(f)
+            cfg = tomli.load(f)
 
             size_x, size_y = mapdata.size
             map_width = size_x

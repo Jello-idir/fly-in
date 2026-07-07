@@ -91,7 +91,7 @@ class Drone(Entity):
         self, mlx_ptr: mlx_t,
         cfg: Config,
         drone_base: DroneBase,
-        current_hub: HubStation
+        current_hub: 'HubStation'
     ) -> None:
         self.id: int = drone_base.id
         self.location: HubStation | Connection = current_hub
