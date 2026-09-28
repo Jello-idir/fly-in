@@ -8,8 +8,8 @@ hub:            gate        1 0         [color=blue zone=restricted max_drones=6
 hub:            hood        0 1         [color=black zone=priority]
 
 hub:            A1          2 -1        [color=red max_drones=2 zone=restricted]
-hub:            A3          2 1         [color=red max_drones=1 zone=restricted]
 hub:            A2          2 0         [color=red max_drones=2 zone=restricted]
+hub:            A3          2 1         [color=red max_drones=1 zone=restricted]
 
 hub:            B1          3 -1        [color=blue max_drones=2]
 hub:            B2          3 0         [color=orange zone=priority max_drones=30]

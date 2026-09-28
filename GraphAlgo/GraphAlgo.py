@@ -225,6 +225,7 @@ class Graph:
             while i < len(path) - 1:
                 src = path[i]
                 dst = path[i + 1]
+                # node to node
                 if isinstance(src, Node) and isinstance(dst, Node):
                     if src == dst:
                         conn = None
@@ -237,10 +238,12 @@ class Graph:
                             )
                         )
                     list_of_edges.append(conn)
+                # node to edge
                 elif isinstance(src, Node) and isinstance(dst, Edge):
                     list_of_edges.append(dst)
+                # edge to node
                 elif isinstance(src, Edge) and isinstance(dst, Node):
-                    list_of_edges.append(src)
+                    list_of_edges.append(None)
                 i += 1
             return list_of_edges
 

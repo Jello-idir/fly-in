@@ -6,6 +6,10 @@ from MapParser import MapData
 from GraphAlgo import Graph
 from Config import Config
 
+# the project depends on the following packages:
+# pydantic, pillow
+
+# without using util method
 
 RED = "\033[31m"
 RESET = "\033[0m"
