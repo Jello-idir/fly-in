@@ -1,0 +1,6 @@
+nb_drones: 2
+start_hub: S 0 0
+hub: R 1 0 [zone=restricted max_drones=2]
+end_hub: E 2 0
+connection: S-R
+connection: R-E
