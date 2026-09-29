@@ -1,14 +1,85 @@
-nb_drones: 3
-start_hub: S 0 2
-hub: A 3 0
-hub: B 2 1
-hub: C 2 2
-hub: D 3 3
-end_hub: E 5 0
-connection: S-B
-connection: S-C
-connection: S-D
-connection: A-B
-connection: A-D
-connection: A-E
-connection: C-D
+nb_drones: 12
+
+# letter F
+# ------------------------------
+start_hub:      start       0 0     [color=green max_drones=4]
+hub:            f1          4 0     [color=blue max_drones=4]
+hub:            f2          0 2     [color=blue max_drones=4]
+hub:            f3          3 2     [color=blue max_drones=4]
+hub:            f4          0 5     [color=blue max_drones=4]
+connection:     start-f1            [max_link_capacity=8]
+connection:     start-f2            [max_link_capacity=8]
+connection:     f2-f3               [max_link_capacity=8]
+connection:     f2-f4               [max_link_capacity=8]
+# ------------------------------
+
+
+# letter L
+# ------------------------------
+hub:            l1          6 0     [color=blue max_drones=4]
+hub:            l2          6 5     [color=blue max_drones=4]
+hub:            l3          10 5    [color=blue max_drones=4]
+connection:     l1-l2               [max_link_capacity=8]
+connection:     l2-l3               [max_link_capacity=8]
+# ------------------------------
+
+
+# letter Y
+# ------------------------------
+hub:            y1          12 0     [color=blue max_drones=4 zone=restricted]
+hub:            y2          16 0     [color=blue max_drones=4]
+hub:            y3          12 2     [color=blue max_drones=4 zone=restricted]
+hub:            y4          14 2     [color=blue max_drones=4]
+hub:            y5          16 2     [color=blue max_drones=4]
+hub:            y6          14 5     [color=blue max_drones=4]
+connection:     y1-y3                [max_link_capacity=8]
+connection:     y3-y4                [max_link_capacity=8]
+connection:     y4-y5                [max_link_capacity=8]
+connection:     y5-y2                [max_link_capacity=8]
+connection:     y4-y6                [max_link_capacity=8]
+# ------------------------------
+
+
+# letter -
+# ------------------------------
+hub:            d1         19 3     [color=white max_drones=4]
+hub:            d2         21 3     [color=white max_drones=4]
+connection:     d1-d2               [max_link_capacity=8]
+# ------------------------------
+
+
+# letter I
+# ------------------------------
+hub:            i1          24 0     [color=red max_drones=4]
+hub:            i2          24 2     [color=red max_drones=4 zone=priority]
+hub:            i3          24 5     [color=red max_drones=4 zone=restricted]
+connection:     i1-i2               [max_link_capacity=1]
+connection:     i2-i3               [max_link_capacity=8]
+# ------------------------------
+
+
+# letter N
+# ------------------------------
+hub:            n1          28 0    [color=red max_drones=4 zone=priority]
+hub:            n2          28 5    [color=red max_drones=4]
+hub:            n3          32 0    [color=red max_drones=4]
+end_hub:        n4          32 5    [color=rainbow max_drones=4]
+connection:     n1-n2               [max_link_capacity=8]
+connection:     n2-n3               [max_link_capacity=6]
+connection:     n3-n4               [max_link_capacity=8]
+# ------------------------------
+
+# path connections
+connection:     f1-l1
+connection:     f3-l1
+connection:     f4-l2
+connection:     l3-y6
+connection:     l3-y3
+connection:     l1-y1
+connection:     y5-d1
+connection:     y6-d1
+connection:     y6-i3
+connection:     d2-i1
+connection:     i3-n2
+connection:     n2-n4
+connection:     i2-n1

@@ -462,23 +462,26 @@ class MlxWindow:
         x_inc = dx / steps
         y_inc = dy / steps
 
+        width = img.contents.width
+        height = img.contents.height
+        pixels = ctypes.addressof(img.contents.pixels.contents)
+        brush_row = bytes((
+            color >> 24 & 0xFF,
+            color >> 16 & 0xFF,
+            color >> 8 & 0xFF,
+            color & 0xFF,
+        )) * (2 * thickness + 1)
         x, y = float(x1), float(y1)
         for _ in range(steps):
-            for j in range(-thickness, thickness + 1):
-                for i in range(-thickness, thickness + 1):
-                    px = int(x) + i
-                    py = int(y) + j
-                    # bounds shecking
-                    if not (
-                            0 <= px < img.contents.width
-                            and 0 <= py < img.contents.height
-                            ):
-                        continue
-                    idx = (py * img.contents.width + px) * 4
-                    img.contents.pixels[idx] = color >> 24 & 0xFF
-                    img.contents.pixels[idx + 1] = color >> 16 & 0xFF
-                    img.contents.pixels[idx + 2] = color >> 8 & 0xFF
-                    img.contents.pixels[idx + 3] = color & 0xFF
+            left = max(0, int(x) - thickness)
+            right = min(width, int(x) + thickness + 1)
+            if left < right:
+                for py in range(max(0, int(y) - thickness),
+                                min(height, int(y) + thickness + 1)):
+                    ctypes.memmove(
+                        pixels + (py * width + left) * 4,
+                        brush_row, (right - left) * 4,
+                    )
 
             x += x_inc
             y += y_inc

@@ -289,14 +289,15 @@ class MapData(BaseModel):
                                      f"line: --> '{line}'")
 
         try:
-            start_hub_pos = next(
+            start_hub = next(
                 hub for hub in hubs.values() if hub.type == HubType.start_hub
-            ).pos
+            )
         except StopIteration:
             raise ValueError("no start_hub defined.")
 
-        # calculating boundries
-        bounding_box = (0, 0, 0, 0)
+        # Initialize bounds from a real hub so unused origin space is excluded.
+        start_x, start_y = start_hub.pos
+        bounding_box = (start_x, start_x, start_y, start_y)
         for hub in hubs.values():
             x, y = hub.pos
             min_x, max_x, min_y, max_y = bounding_box
@@ -322,7 +323,7 @@ class MapData(BaseModel):
             hubs=hubs,
             connections=connections,
             drones={
-                i: DroneBase(id=i, coord=start_hub_pos)
+                i: DroneBase(id=i, coord=start_hub.pos)
                 for i in range(1, nb_drones + 1)
             },
             size=mapsize

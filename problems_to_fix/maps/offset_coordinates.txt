@@ -1,6 +1,0 @@
-# A two-hub graph translated away from the origin.
-# Its occupied bounds span 2 x 2 coordinates, but the current parser returns 102 x 102.
-nb_drones: 1
-start_hub: start 100 100
-end_hub: end 101 101
-connection: start-end
