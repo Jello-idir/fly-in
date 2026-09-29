@@ -26,27 +26,14 @@ ASSETS_LIST = [
 
 @dataclass
 class Shape:
-    """Pixel data loaded from a PNG asset.
-
-    Attributes:
-        pixels: Set of (x, y, color) tuples for every non-transparent pixel.
-        width:  Bounding box width, precomputed at load time.
-        height: Bounding box height, precomputed at load time.
-    """
+    """Visible PNG pixels as (x, y, RGBA) tuples and their extent."""
     pixels: set[tuple[int, int, int]]
     width: int
     height: int
 
     @classmethod
     def from_image(cls, path: str) -> "Shape":
-        """Loads a PNG and converts pixels into (x, y, color) tuples.
-
-        Args:
-            path: Path to the PNG asset.
-
-        Returns:
-            A Shape with pixels, width, and height populated.
-        """
+        """Load visible pixels and their extent from a PNG file."""
 
         try:
             with open(path, "rb") as f:
@@ -80,10 +67,7 @@ class Shape:
 
 @dataclass(frozen=True)
 class Shapes:
-    """All pixel shapes used for rendering hubs and drones.
-
-    Loaded from PNG assets at runtime via `from_assets`.
-    """
+    """Sprites for drones and every hub type."""
     drone: Shape
     hub: Shape
     hub_restricted: Shape
@@ -94,14 +78,7 @@ class Shapes:
 
     @classmethod
     def from_assets(cls, assets: "AssetsSection") -> "Shapes":
-        """Loads all shapes from the paths defined in AssetsSection.
-
-        Args:
-            assets: An AssetsSection containing image paths.
-
-        Returns:
-            A Shapes instance with every shape loaded.
-        """
+        """Load all sprites from the configured asset paths."""
 
         return cls(
             drone=Shape.from_image(assets.drone),
@@ -115,22 +92,19 @@ class Shapes:
 
 
 class WindowSection(BaseModel):
-    """ window settings basemodel
-    """
+    """Window title and minimum width."""
     title: str = "FLY-OUT"
     min_width: int = Field(ge=0)
 
 
 class AppearanceSection(BaseModel):
-    """ appearance settings basemodel
-    """
+    """Background color and cinematic-bar visibility."""
     background_color: int = 0x00000080
     cenimatic_bars: bool = True
 
 
 class AssetsSection(BaseModel):
-    """ assets settings basemodel
-    """
+    """PNG paths for drone and hub sprites."""
     drone: str
     hub: str
     hub_restricted: str
@@ -141,47 +115,41 @@ class AssetsSection(BaseModel):
 
 
 class DroneSection(BaseModel):
-    """ drone settings basemodel
-    """
+    """Trail visibility, opacity, and position randomness."""
     enable_trail: bool = True
     trail_opacity: float = Field(default=1, ge=0, le=1)
     position_randomness: int = Field(default=5, ge=0, le=32)
 
 
 class HubSection(BaseModel):
-    """ hub settings basemodel
-    """
+    """Hub label colors and label/count visibility."""
     enable_name: bool = True
     name_color: int = 0xFFFFFFFF
     enable_drone_count: bool = True
 
 
 class ConnectionSection(BaseModel):
-    """ hub settings basemodel
-    """
+    """Connection fill, outline, and capacity-label colors."""
     color: int = 0xFFFFFF50
     text_color: int = 0xFFFFFFFF
     stroke_color: int = 0xFFFFFFFF
 
 
 class SizingSection(BaseModel):
-    """ sizing settings basemodel
-    """
+    """Grid spacing and minimum window padding."""
     spacing: int = Field(ge=0)
     padding_x: int = Field(ge=PADDING_X_DEFAULT)
     padding_y: int = Field(ge=PADDING_Y_DEFAULT)
 
 
 class OtherSection(BaseModel):
-    """ other settings basemodel
-    """
+    """Help-tip text and visibility."""
     enable_help_tip: bool = True
     help_tip_text: str = ""
 
 
 class Config(BaseModel):
-    """ render config basemodel
-    """
+    """Validated display settings, map dimensions, fonts, and sprites."""
     # from config file — nested, same shape as AppConfig
     window: WindowSection
     appearance: AppearanceSection
@@ -205,15 +173,7 @@ class Config(BaseModel):
     def from_mapdata(
         cls, mapdata: MapData, config_path: str = "config.toml"
     ) -> 'Config':
-        """ class method to create a RenderConfig from a MapData
-
-        Args:
-            mapdata (MapData): _mapdata object for calculating window size
-            config_path (str, optional): path to config, Default "config.toml".
-
-        Returns:
-            RenderConfig: _renderconfig object
-        """
+        """Load TOML settings and assets, then size the window for the map."""
         with open(config_path, "rb") as f:
             # load toml as dict
             cfg = tomli.load(f)

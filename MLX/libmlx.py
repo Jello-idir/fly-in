@@ -223,6 +223,7 @@ MLX_SETTINGS_MAX = (5,)  # Setting count.
 
 
 class mlx_texture_t(ctypes.Structure):
+    """Native texture dimensions, pixel format, and pixel buffer."""
     _fields_ = [
         ("width", c_uint32),
         ("height", c_uint32),
@@ -232,10 +233,12 @@ class mlx_texture_t(ctypes.Structure):
 
 
 class mlx_instance_t(ctypes.Structure):
+    """A placed image instance with position, depth, and visibility."""
     _fields_ = [("x", c_int32), ("y", c_int32), ("z", c_int32), ("enabled", c_bool)]
 
 
 class xpm_t(ctypes.Structure):
+    """Native XPM texture and its color-encoding metadata."""
     _fields_ = [
         ("texture", mlx_texture_t),
         ("color_count", c_int32),
@@ -245,6 +248,7 @@ class xpm_t(ctypes.Structure):
 
 
 class mlx_key_data_t(ctypes.Structure):
+    """A keyboard event with key, action, and modifier data."""
     _fields_ = [
         ("key", c_int32),  # ENUM
         ("action", c_int32),  # ENUM
@@ -254,6 +258,7 @@ class mlx_key_data_t(ctypes.Structure):
 
 
 class mlx_image_t(ctypes.Structure):
+    """Native image data and its instances in the window."""
     _fields_ = [
         ("width", c_uint32),
         ("height", c_uint32),
@@ -266,6 +271,7 @@ class mlx_image_t(ctypes.Structure):
 
 
 class mlx_t(ctypes.Structure):
+    """Native window context, dimensions, and frame timing."""
     _fields_ = [
         ("window", c_void_p),
         ("context", c_void_p),
@@ -340,6 +346,9 @@ mlx.mlx_is_key_down.argtypes = [ctypes.POINTER(mlx_t), ctypes.c_int]  # keys_t
 mlx.mlx_is_key_down.restype = c_bool
 
 # Hooks
+mlx.mlx_key_hook.argtypes = [ctypes.POINTER(mlx_t), mlx_keyfunc, c_void_p]
+mlx.mlx_key_hook.restype = None
+
 mlx.mlx_loop_hook.argtypes = [ctypes.POINTER(mlx_t), mlx_loop_hook_func, c_void_p]
 mlx.mlx_loop_hook.restype = c_bool
 

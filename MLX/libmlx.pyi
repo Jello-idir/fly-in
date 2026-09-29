@@ -163,27 +163,35 @@ MLX_HEADLESS: Incomplete
 MLX_SETTINGS_MAX: Incomplete
 
 class mlx_instance_t(ctypes.Structure):
+    """A placed image instance with position, depth, and visibility."""
     x: int
     y: int
     z: int
     enabled: bool
 
 class mlx_image_t(ctypes.Structure):
+    """Native image data and its instances in the window."""
     width: int
     height: int
     instances: ctypes.Array[mlx_instance_t]
 
-class mlx_t(ctypes.Structure): ...
+class mlx_t(ctypes.Structure):
+    """Native window context, dimensions, and frame timing."""
+    ...
 
 class mlx_texture_t(ctypes.Structure):
+    """Native texture dimensions, pixel format, and pixel buffer."""
     width: int
     height: int
     bytes_per_pixel: int
     pixels: ctypes.Array[ctypes.c_uint8]
 
-class xpm_t(ctypes.Structure): ...
+class xpm_t(ctypes.Structure):
+    """Native XPM texture and its color-encoding metadata."""
+    ...
 
 class mlx_key_data_t(ctypes.Structure):
+    """A keyboard event with key, action, and modifier data."""
     key: int
     action: int
     modifier: int
@@ -197,60 +205,99 @@ mlx_closefunc: Incomplete
 mlx_loop_hook_func: Incomplete
 
 class _MlxLib:
+    """Typed interface to the native MLX library."""
     def mlx_init(
         self, width: int, height: int, title: bytes, resize: bool
-    ) -> ctypes.POINTER(mlx_t): ...  # type: ignore
+    ) -> ctypes.POINTER(mlx_t):  # type: ignore
+        """Create a window; return its context or null on failure."""
+        ...
     def mlx_new_image(
         self, mlx: ctypes.POINTER(mlx_t), width: int, height: int  # type: ignore
-    ) -> ctypes.POINTER(mlx_image_t): ...  # type: ignore
+    ) -> ctypes.POINTER(mlx_image_t):  # type: ignore
+        """Allocate an RGBA image, or return a null pointer on failure."""
+        ...
     def mlx_image_to_window(
         self, mlx: ctypes.POINTER(mlx_t), img: ctypes.POINTER(mlx_image_t), x: int, y: int  # type: ignore
-    ) -> int: ...  # type: ignore
+    ) -> int:  # type: ignore
+        """Place an image and return its instance index, or -1 on failure."""
+        ...
     def mlx_put_pixel(
         self, img: ctypes.POINTER(mlx_image_t), x: int, y: int, color: int  # type: ignore
-    ) -> None: ...  # type: ignore
+    ) -> None:  # type: ignore
+        """Write one packed RGBA color at the given image coordinates."""
+        ...
     def mlx_delete_image(
         self, mlx: ctypes.POINTER(mlx_t), img: ctypes.POINTER(mlx_image_t)  # type: ignore
-    ) -> None: ...  # type: ignore
+    ) -> None:  # type: ignore
+        """Free an image and remove its window instances."""
+        ...
     def mlx_loop(
         self, mlx: ctypes.POINTER(mlx_t)  # type: ignore
-    ) -> None: ...  # type: ignore
+    ) -> None:  # type: ignore
+        """Process window events and rendering until closure is requested."""
+        ...
     def mlx_loop_hook(
         self, mlx: ctypes.POINTER(mlx_t), fn: Incomplete, param: ctypes.c_void_p  # type: ignore
-    ) -> None: ...  # type: ignore
+    ) -> None:  # type: ignore
+        """Register a callback to run on each loop iteration."""
+        ...
     def mlx_key_hook(
         self, mlx: ctypes.POINTER(mlx_t), fn: Incomplete, param: ctypes.c_void_p | None  # type: ignore
-    ) -> None: ...  # type: ignore
+    ) -> None:  # type: ignore
+        """Register a callback for keyboard events."""
+        ...
     def mlx_close_window(
         self, mlx: ctypes.POINTER(mlx_t)  # type: ignore
-    ) -> None: ...  # type: ignore
+    ) -> None:  # type: ignore
+        """Request that the window close and the event loop stop."""
+        ...
     def mlx_terminate(
         self, mlx: ctypes.POINTER(mlx_t)  # type: ignore
-    ) -> None: ...  # type: ignore
+    ) -> None:  # type: ignore
+        """Release the MLX context and its window resources."""
+        ...
     def mlx_is_key_down(
         self, mlx: ctypes.POINTER(mlx_t), key: int  # type: ignore
-    ) -> bool: ...  # type: ignore
+    ) -> bool:  # type: ignore
+        """Report whether the given key is currently held down."""
+        ...
     def mlx_load_png(
         self, path: bytes
-    ) -> ctypes.POINTER(mlx_texture_t): ...  # type: ignore
+    ) -> ctypes.POINTER(mlx_texture_t):  # type: ignore
+        """Load a PNG texture, or return a null pointer on failure."""
+        ...
     def mlx_texture_to_image(
         self, mlx: ctypes.POINTER(mlx_t), texture: ctypes.POINTER(mlx_texture_t)  # type: ignore
-    ) -> ctypes.POINTER(mlx_image_t): ...  # type: ignore
+    ) -> ctypes.POINTER(mlx_image_t):  # type: ignore
+        """Create an image from a loaded texture."""
+        ...
     def mlx_delete_texture(
         self, texture: ctypes.POINTER(mlx_texture_t)  # type: ignore
-    ) -> None: ...  # type: ignore
+    ) -> None:  # type: ignore
+        """Free a loaded texture and its pixel buffer."""
+        ...
     def mlx_set_setting(
         self, setting: Incomplete, value: bool
-    ) -> None: ...  # type: ignore
-    def mlx_get_time(self) -> float: ...
+    ) -> None:  # type: ignore
+        """Set a library option before creating a window."""
+        ...
+    def mlx_get_time(self) -> float:
+        """Return elapsed library time in seconds."""
+        ...
     def mlx_put_string(
         self, mlx: ctypes.POINTER(mlx_t), str: bytes, x: int, y: int, z: int  # type: ignore
-    ) -> ctypes.POINTER(mlx_image_t): ...  # type: ignore
+    ) -> ctypes.POINTER(mlx_image_t):  # type: ignore
+        """Create and place a text image in the window."""
+        ...
     def mlx_mouse_hook(
         self, mlx: ctypes.POINTER(mlx_t), fn: mlx_mousefunc, param: ctypes.c_void_p | None  # type: ignore
-    ) -> None: ...  # type: ignore
+    ) -> None:  # type: ignore
+        """Register a callback for mouse-button events."""
+        ...
     def mlx_cursor_hook(
         self, mlx: ctypes.POINTER(mlx_t), fn: mlx_cursorfunc, param: ctypes.c_void_p | None  # type: ignore
-    ) -> None: ...  # type: ignore
+    ) -> None:  # type: ignore
+        """Register a callback for cursor-position changes."""
+        ...
 
 mlx: _MlxLib

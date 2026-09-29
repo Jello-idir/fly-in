@@ -2,8 +2,7 @@ from enum import Enum
 
 
 class ColorType(int, Enum):
-    """ Types of colors used in the simulation.
-    """
+    """Named RGBA colors and the rainbow rendering marker."""
     # main
     red = (0xE04749 << 8) + 0xFF
     green = (0x65CD28 << 8) + 0xFF
@@ -40,8 +39,7 @@ class ColorType(int, Enum):
 
 
 class ZoneType(str, Enum):
-    """ Types of zones used in the simulation.
-    """
+    """Hub access rules and travel-cost categories."""
     normal = "normal"
     blocked = "blocked"
     restricted = "restricted"
@@ -49,8 +47,7 @@ class ZoneType(str, Enum):
 
 
 class HubType(str, Enum):
-    """ Types of hubs used in the simulation.
-    """
+    """Start, intermediate, and destination hub roles."""
     start_hub = "start_hub"
     hub = "hub"
     end_hub = "end_hub"

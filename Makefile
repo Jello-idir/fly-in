@@ -15,20 +15,25 @@ define check_venv
 	fi
 endef
 
-install: .deps_installed
-
-.deps_installed: re-install
-
-re-install: requirements.txt
+install re-install: requirements.txt
 	$(call check_venv)
-	$(PIP) install -r requirements.txt;
-	touch .deps_installed;
+	@stamp="$$VIRTUAL_ENV/.fly-in-deps-installed"; \
+	if [ "$@" = "re-install" ] || [ ! -f "$$stamp" ] || \
+		[ requirements.txt -nt "$$stamp" ] || \
+		[ "$$VIRTUAL_ENV/pyvenv.cfg" -nt "$$stamp" ]; then \
+		$(PIP) install -r requirements.txt && touch "$$stamp"; \
+	else \
+		echo "Dependencies are up to date in $$VIRTUAL_ENV."; \
+	fi
 
 run:
 	$(call check_venv)
-	@if [ ! -f ".deps_installed" ]; then \
+	@stamp="$$VIRTUAL_ENV/.fly-in-deps-installed"; \
+	if [ ! -f "$$stamp" ] || [ requirements.txt -nt "$$stamp" ] || \
+		[ "$$VIRTUAL_ENV/pyvenv.cfg" -nt "$$stamp" ]; then \
 		echo -e "\033[33m!! WARNING";\
 		echo -e " * \033[0mDependencies are not installed. run 'make install' to install dependencies."; \
+		exit 1; \
 	else \
 		PYDANTIC_ERRORS_INCLUDE_URL=0 $(PYTHON) $(MAIN_SCRIPT); \
 	fi
@@ -76,4 +81,3 @@ debug:
 dev:
 	$(call check_venv)
 	$(PIP) install -r requirements-dev.txt;
-

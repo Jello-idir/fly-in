@@ -5,14 +5,14 @@ from itertools import count, zip_longest
 
 
 class Node:
-    """ Node in the graph representing a hub.
-    """
+    """A hub with routing capacity, zone rules, and neighbors."""
     def __init__(
             self, name: str,
             capacity: int,
             hubtype: HubType,
             zonetype: ZoneType
             ):
+        """Set hub properties and initialize its connection lists."""
         self.name = name
         self.capacity = capacity
         self.type = hubtype
@@ -22,14 +22,14 @@ class Node:
 
 
 class Edge:
-    """ Edge in the graph representing a connection between two hubs.
-    """
+    """An undirected connection with a per-turn crossing capacity."""
     def __init__(
             self, name: str,
             link_capacity: int,
             node_a: Node,
             node_b: Node
             ):
+        """Store the connection name, capacity, and endpoint nodes."""
         self.name = name
         self.capacity = link_capacity
         self.node_a = node_a
@@ -37,27 +37,20 @@ class Edge:
 
 
 class Drone:
-    """ Drone that will navigate through the graph.
-    """
+    """A drone and its planned position for each turn."""
     def __init__(
         self,
         id: int,
     ):
+        """Assign the drone ID and initialize an empty route."""
         self.id = id
         self.path: list[Node | Edge] = []
 
 
 class Graph:
-    """ Graph representing the network of hubs and connections,
-    and managing the navigation of drones through it.
-    """
+    """The hub network and reservations for scheduled drone routes."""
     def __init__(self, mapdata: MapData):
-        """ initializes the graph from the map data.
-
-        Args:
-            mapdata (MapData): The map data containing hubs,
-            connections, and drones.
-        """
+        """Build nodes, edges, and drones from a validated map."""
         self.nodes: dict[str, Node] = {}
         self.edges: dict[str, Edge] = {}
         self.drons: dict[int, Drone] = {}
@@ -90,20 +83,9 @@ class Graph:
             self.drons[drone_id] = Drone(id=drone_id)
 
     def dijkstra(self, start: Node, end: Node) -> list[Node | Edge]:
-        """ Finds the shortest path from start node to end node,
-        using a modified Dijkstra's algorithm
-
-        Args:
-            start (Node): Starting node for the pathfinding algorithm.
-            end (Node): Ending node for the pathfinding algorithm.
-
-        Raises:
-            ValueError: If no path is found from start to end.
-
-        Returns:
-            list[Node | Edge]: The shortest path from start to end.
-        """
+        """Find an earliest-arrival route using existing reservations."""
         counter = count(start=1, step=2)
+        last_reserved_turn = max(self.capacity_changes, default=0)
         h: list[tuple[int, int, int, Node, list[Node | Edge]]] = [
             (1, 0, next(counter), start, [start])
         ]
@@ -113,7 +95,7 @@ class Graph:
                 cost, priority_count, _, current, path = heappop(h)
             except IndexError:
                 raise ValueError(
-                    f"No path found found from {start.name} to {end.name}."
+                    f"No path found from {start.name} to {end.name}."
                 )
 
             if current == end:
@@ -126,7 +108,6 @@ class Graph:
 
             this_turn = self.capacity_changes.get(cost, {})
 
-            needs_wait = False
             for adj in current.adjacents:
 
                 if adj.zone == ZoneType.blocked:
@@ -156,7 +137,7 @@ class Graph:
                     adj_cap = cnx_cap
 
                 if adj_cap <= 0 or cnx_cap <= 0:
-                    needs_wait = True
+                    continue
 
                 else:
                     if adj.zone == ZoneType.restricted:
@@ -182,7 +163,7 @@ class Graph:
                             ),
                         )
             remaining_here = this_turn.get(current, current.capacity)
-            if needs_wait and (
+            if cost <= last_reserved_turn and (
                 current.type == HubType.start_hub or remaining_here > 0
             ):
                 heappush(
@@ -197,11 +178,7 @@ class Graph:
                 )
 
     def navigate_drones(self) -> None:
-        """ Navigates all drones from the start hub to the end hub.
-
-        Returns:
-            None
-        """
+        """Plan each drone's route and reserve hub and link capacity."""
         start_node = next(
             node for node in self.nodes.values()
             if node.type == HubType.start_hub
@@ -212,15 +189,7 @@ class Graph:
         )
 
         def _nodes_to_edges_path(path: list[Node | Edge]) -> list[Edge | None]:
-            """ Converts a path of nodes to a path of edges.
-
-            Args:
-                path (list[Node  |  Edge]): The path of nodes to convert.
-
-            Returns:
-                list[Edge | None]: The corresponding path of edges,
-                with None for consecutive nodes that are the same.
-            """
+            """Return links reserved each turn, or None for no reservation."""
             list_of_edges: list[Edge | None] = []
             i = 0
             while i < len(path) - 1:
@@ -274,13 +243,7 @@ class Graph:
                 )
 
     def get_solution(self) -> tuple[str, str]:
-        """ Generates the solution output of the drone navigation.
-
-        Returns:
-            tuple[str, str]: A tuple containing two strings:
-            the first string represents the moves of the drones,
-            and the second is the same as first but for Animation.
-        """
+        """Return movement output and animation frames as turn-by-turn text."""
 
         output_list: list[list[str]] = []
         animation_list: list[list[str]] = []
@@ -288,10 +251,10 @@ class Graph:
         for drone in self.drons.values():
             line = []
             animation_line = []
-            for node_edge in drone.path[1:]:
+            for previous, node_edge in zip(drone.path, drone.path[1:]):
                 move = f"D{drone.id}-{node_edge.name}"
                 animation_line.append(move)
-                if move in line:
+                if node_edge is previous:
                     move = ""
                 line.append(move)
             output_list.append(line)

@@ -12,14 +12,14 @@ background_color = 0x202020ff
 cenimatic_bars = false
 
 [drone]
-enable_trail = true
+enable_trail = false
 trail_opacity = 0.8
 position_randomness = 10
 
 [hub]
 enable_name = true
 name_color = 0xFFFFFFFF
-enable_hub_stats = true
+enable_drone_count = true
 
 [connection]
 color = 0xFFFFFF20

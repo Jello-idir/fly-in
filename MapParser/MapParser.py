@@ -12,11 +12,7 @@ from Common import (
 
 
 class MapData(BaseModel):
-    """ class to represent the map data
-
-    Raises:
-        ValueError: if one of various validation errors occur.
-    """
+    """Validated hubs, connections, drones, and normalized map bounds."""
     nb_drones: int = Field(gt=0)
     hubs: dict[str, HubBase]
     connections: list[ConnectionBase]
@@ -25,14 +21,7 @@ class MapData(BaseModel):
 
     @model_validator(mode="after")
     def validate_map(self) -> "MapData":
-        """ validate the map data after model initialization
-
-        Raises:
-            ValueError: if no hubs or connections are defined,
-            or if there is more than a single start_hub and end_hub,
-        Returns:
-            MapData: the validated map data
-        """
+        """Require hubs, connections, and exactly one start and end hub."""
         if not self.hubs:
             raise ValueError("no hubs defined.")
         if not self.connections:
@@ -59,17 +48,7 @@ class MapData(BaseModel):
 
     @classmethod
     def from_file(cls, file_path: str) -> "MapData":
-        """ create a MapData instance from a map file
-
-        Args:
-            file_path (str): path to the map file
-
-        Raises:
-            ValueError: if the map file is invalid or contains errors
-
-        Returns:
-            MapData: instance of MapData created from the map file
-        """
+        """Parse and validate a map, then normalize its grid coordinates."""
         nb_drones: int = 0
         hubs: dict[str, HubBase] = {}
         connections: list[ConnectionBase] = []
@@ -77,31 +56,14 @@ class MapData(BaseModel):
         connection_pairs: set[frozenset[str]] = set()
 
         def _handle_nb_drones(match: re.Match[str]) -> None:
-            """ handle the number of drones defined in the map file
-
-            Args:
-                match (re.Match): regex match object for the number of drones
-
-            Raises:
-                ValueError: if the number of drones is defined multiple times
-            """
+            """Read a positive drone count from a matched definition."""
             nonlocal nb_drones
             nb_drones = int(match.group(1))
             if nb_drones <= 0:
                 raise ValueError("number of drones must be positive.")
 
         def _handle_hub(match: re.Match[str]) -> None:
-            """ handle a hub defined in the map file
-
-            Args:
-                match (re.Match): regex match object for the hub definition
-
-            Raises:
-                ValueError: if the hub name is a duplicate,
-                or if the metadata format is invalid,
-                or if the coordinates are invalid,
-                or if the hub position overlaps with another hub.
-            """
+            """Validate and add a hub with a unique name and position."""
 
             hub_type, hub_name, x, y, metadata_str = match.groups()
 
@@ -174,16 +136,7 @@ class MapData(BaseModel):
                 )
 
         def _handle_connection(match: re.Match[str]) -> None:
-            """ handle a connection defined in the map file
-
-            Args:
-                match (re.Match): regex match object for the connection
-
-            Raises:
-                ValueError: if the connection is a duplicate,
-                or if the hubs are not defined,
-                or if the connection data is invalid,
-            """
+            """Validate and add a link between distinct, existing hubs."""
 
             hub_a, hub_b, cap = match.groups()
 

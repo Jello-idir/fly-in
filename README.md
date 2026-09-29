@@ -58,6 +58,8 @@ once the program stats and you see hubs and connections between them, you can pr
     make install
 Installs all runtime dependencies from `requirements.txt` into the active virtual environment. Skips reinstalling if dependencies are already up to date.
 
+The installation stamp is stored inside that virtual environment. Switching to a new environment or recreating it requires `make install` again. Use `make re-install` to force installation.
+
 ---
     make run
 Runs the project. Will warn and exit early if dependencies haven't been installed yet — run `make install` first.

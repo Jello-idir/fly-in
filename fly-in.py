@@ -13,9 +13,13 @@ from Config import Config
 
 RED = "\033[31m"
 RESET = "\033[0m"
+window: MlxWindow | None = None
 
 
 def signal_handler(sig, frame):  # type: ignore
+    """Exit on SIGINT during setup or planning; close active playback."""
+    if window is None or not window.is_running:
+        raise SystemExit(130)
     mlx.mlx_close_window(window.mlx_ptr)
 
 
@@ -40,7 +44,11 @@ if __name__ == "__main__":
         sys.exit(1)
 
     # mlx window init
-    window = MlxWindow.from_map(mapdata, cfg)
+    try:
+        window = MlxWindow.from_map(mapdata, cfg)
+    except Exception as e:
+        sys.stderr.write(f"{RED}Window Error:{RESET} {e}\n")
+        sys.exit(1)
 
     try:
         g = Graph(mapdata)
@@ -52,6 +60,7 @@ if __name__ == "__main__":
         g.navigate_drones()
     except Exception as e:
         sys.stderr.write(f"{RED}Navigation Error:{RESET} {e}\n")
+        window.run(solution="")
         sys.exit(1)
 
     try:
@@ -61,11 +70,12 @@ if __name__ == "__main__":
         sys.exit(1)
 
     print(solution)
-    # for id, turn in g.capacity_changes.items():
-    #     print("\n", id, "\n-----------")
-    #     for node_edge, change in turn.items():
-    #         print(f"{node_edge.name:4}: {change}")
 
-    window.run(solution=animation_solution)
+    try:
+        window.run(solution=animation_solution)
+    except Exception as e:
+        sys.stderr.write(f"{RED}Display Error:{RESET} {e}\n")
+        sys.exit(1)
+
     sys.exit(0)
     # ----------
