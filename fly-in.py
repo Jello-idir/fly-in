@@ -61,6 +61,11 @@ if __name__ == "__main__":
         sys.exit(1)
 
     print(solution)
+    # for id, turn in g.capacity_changes.items():
+    #     print("\n", id, "\n-----------")
+    #     for node_edge, change in turn.items():
+    #         print(f"{node_edge.name:4}: {change}")
+
     window.run(solution=animation_solution)
     sys.exit(0)
     # ----------

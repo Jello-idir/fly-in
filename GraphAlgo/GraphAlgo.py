@@ -104,11 +104,10 @@ class Graph:
             list[Node | Edge]: The shortest path from start to end.
         """
         counter = count(start=1, step=2)
-        # priority_counter = count(start=0, step=2)
         h: list[tuple[int, int, int, Node, list[Node | Edge]]] = [
             (1, 0, next(counter), start, [start])
         ]
-        visited = set()
+        visited: set[tuple[str, int]] = set()
         while True:
             try:
                 cost, priority_count, _, current, path = heappop(h)
@@ -128,7 +127,6 @@ class Graph:
             this_turn = self.capacity_changes.get(cost, {})
 
             needs_wait = False
-
             for adj in current.adjacents:
 
                 if adj.zone == ZoneType.blocked:
@@ -183,7 +181,10 @@ class Graph:
                                 path + [adj],
                             ),
                         )
-            if needs_wait:
+            remaining_here = this_turn.get(current, current.capacity)
+            if needs_wait and (
+                current.type == HubType.start_hub or remaining_here > 0
+            ):
                 heappush(
                     h,
                     (
