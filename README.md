@@ -67,21 +67,29 @@ to the initial state and pauses so you can replay the simulation.
 
 | Command | Purpose |
 | --- | --- |
+| `make` / `make all` / `make fly-in` | Prepare the project by installing runtime dependencies as needed |
 | `make install` | Install runtime dependencies when the environment's stamp is missing or outdated |
 | `make re-install` | Force runtime dependency installation |
-| `make run` | Run the application after checking the dependency stamp |
+| `make run` | Install runtime dependencies as needed, then run the application |
 | `make debug` | Run the entry point with Python's `pdb` debugger |
 | `make clean` | Remove `__pycache__` and `.mypy_cache` directories |
+| `make fclean` | Also remove the active environment's dependency stamp |
+| `make re` | Run `fclean`, then prepare the project again with `all` |
 | `make dev` | Install development dependencies, including Flake8 and mypy |
 | `make lint` | Run Flake8 and mypy with the subject's required flags |
 | `make lint-strict` | Run Flake8 and mypy with `--strict` |
 
-`install`, `re-install`, `run`, `debug`, and `dev` require an active virtual
+`all`, `fly-in`, `re`, `install`, `re-install`, `run`, `debug`, and `dev` require an active virtual
 environment. Lint commands require their tools to be available on `PATH`.
 Individual targets are `lint-flake8`, `lint-mypy`, and `lint-mypy-strict`.
 
 The installation stamp is stored at `$VIRTUAL_ENV/.fly-in-deps-installed`.
 Run `make install` again after creating or switching environments.
+
+Run the application with `make run` or `python3 fly-in.py` inside the active
+environment. Python sources run directly without compilation. Repeated `make`
+calls skip dependency installation when the stamp is current. The bundled MLX42
+libraries are used precompiled.
 
 ### Map format and example
 

@@ -1,83 +1,57 @@
-SHELL := /bin/bash
+NAME = fly-in
 PYTHON = python3
-PIP = pip3
-MAIN_SCRIPT = fly-in.py
+PIP = $(PYTHON) -m pip
+STAMP = $(VIRTUAL_ENV)/.fly-in-deps-installed
 
 MYPY_FLAGS = --warn-return-any --warn-unused-ignores --ignore-missing-imports --disallow-untyped-defs --check-untyped-defs
 
-.PHONY: install run debug clean dev lint lint-flake8 lint-strict re-install lint-mypy lint-mypy-strict
+.PHONY: all $(NAME) install re-install run debug clean fclean re dev check-venv lint lint-strict lint-flake8 lint-mypy lint-mypy-strict
 
-define check_venv
-	@if [ -z "$$VIRTUAL_ENV" ]; then \
-		echo -e "\033[33m!! WARNING"; \
-		echo -e " * \033[0mNot running inside a virtual environment. Activate one first."; \
-		exit 1; \
-	fi
-endef
+all: $(NAME)
 
-install re-install: requirements.txt
-	$(call check_venv)
-	@stamp="$$VIRTUAL_ENV/.fly-in-deps-installed"; \
-	if [ "$@" = "re-install" ] || [ ! -f "$$stamp" ] || \
-		[ requirements.txt -nt "$$stamp" ] || \
-		[ "$$VIRTUAL_ENV/pyvenv.cfg" -nt "$$stamp" ]; then \
-		$(PIP) install -r requirements.txt && touch "$$stamp"; \
-	else \
-		echo "Dependencies are up to date in $$VIRTUAL_ENV."; \
+$(NAME): install
+
+check-venv:
+	@test -n "$(VIRTUAL_ENV)" || (echo "Activate a virtual environment first."; exit 1)
+
+install: check-venv
+	@if [ ! -f "$(STAMP)" ] || [ requirements.txt -nt "$(STAMP)" ] || [ "$(VIRTUAL_ENV)/pyvenv.cfg" -nt "$(STAMP)" ]; then \
+		$(PIP) install -r requirements.txt && touch "$(STAMP)"; \
 	fi
 
-run:
-	$(call check_venv)
-	@stamp="$$VIRTUAL_ENV/.fly-in-deps-installed"; \
-	if [ ! -f "$$stamp" ] || [ requirements.txt -nt "$$stamp" ] || \
-		[ "$$VIRTUAL_ENV/pyvenv.cfg" -nt "$$stamp" ]; then \
-		echo -e "\033[33m!! WARNING";\
-		echo -e " * \033[0mDependencies are not installed. run 'make install' to install dependencies."; \
-		exit 1; \
-	else \
-		PYDANTIC_ERRORS_INCLUDE_URL=0 $(PYTHON) $(MAIN_SCRIPT); \
-	fi
+re-install: check-venv
+	$(RM) "$(STAMP)"
+	$(MAKE) install
+
+run: install
+	PYDANTIC_ERRORS_INCLUDE_URL=0 $(PYTHON) $(NAME).py
+
+debug: install
+	$(PYTHON) -m pdb $(NAME).py
 
 clean:
 	find . -type d -name "__pycache__" -exec rm -rf {} +
 	find . -type d -name ".mypy_cache" -exec rm -rf {} +
 
+fclean: clean
+	@if [ -n "$(VIRTUAL_ENV)" ]; then $(RM) "$(STAMP)"; fi
 
-lint-flake8:
-	@if [ -z "$$(command -v flake8)" ]; then \
-		echo -e "\033[33m!! WARNING";\
-		echo -e " * \033[0mflake8 is not installed. run 'make dev' to install development dependencies."; \
-		echo -e " * \033[0mor activate a virtual envirement with flake8.."; \
-	else \
-		flake8 .; \
-	fi
+re:
+	$(MAKE) fclean
+	$(MAKE) all
 
-lint-mypy:
-	@if [ -z "$$(command -v mypy)" ]; then \
-		echo -e "\033[33m!! WARNING";\
-		echo -e " * \033[0mmypy is not installed. run 'make dev' to install development dependencies."; \
-		echo -e " * \033[0mor activate a virtual envirement with mypy.."; \
-	else \
-		mypy . $(MYPY_FLAGS); \
-	fi
-
-lint-mypy-strict:
-	@if [ -z "$$(command -v mypy)" ]; then \
-		echo -e "\033[33m!! WARNING";\
-		echo -e " * \033[0mmypy is not installed. run 'make dev' to install development dependencies."; \
-		echo -e " * \033[0mor activate a virtual envirement with mypy.."; \
-	else \
-		mypy . --strict; \
-	fi
+dev: check-venv
+	$(PIP) install -r requirements-dev.txt
 
 lint: lint-flake8 lint-mypy
 
 lint-strict: lint-flake8 lint-mypy-strict
 
-debug:
-	$(call check_venv)
-	$(PYTHON) -m pdb $(MAIN_SCRIPT);
+lint-flake8:
+	$(PYTHON) -m flake8 .
 
-dev:
-	$(call check_venv)
-	$(PIP) install -r requirements-dev.txt;
+lint-mypy:
+	$(PYTHON) -m mypy . $(MYPY_FLAGS)
+
+lint-mypy-strict:
+	$(PYTHON) -m mypy . --strict
