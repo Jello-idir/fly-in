@@ -1,0 +1,56 @@
+pff:(master)$ make lint
+python3 -m flake8 .
+python3 -m mypy . --warn-return-any --warn-unused-ignores --ignore-missing-imports --disallow-untyped-defs --check-untyped-defs
+PixelFont/PixelFont.py:107: error: Unused "type: ignore" comment  [unused-ignore]
+GraphAlgo/GraphAlgo.py:90: error: X | Y syntax for unions requires Python 3.10  [syntax]
+GraphAlgo/GraphAlgo.py:113: error: X | Y syntax for unions requires Python 3.10  [syntax]
+GraphAlgo/GraphAlgo.py:141: error: X | Y syntax for unions requires Python 3.10  [syntax]
+GraphAlgo/GraphAlgo.py:159: error: X | Y syntax for unions requires Python 3.10  [syntax]
+GraphAlgo/GraphAlgo.py:265: error: X | Y syntax for unions requires Python 3.10  [syntax]
+GraphAlgo/GraphAlgo.py:276: error: X | Y syntax for unions requires Python 3.10  [syntax]
+Config/Config.py:74: error: Unused "type: ignore" comment  [unused-ignore]
+Visualize/Visualize.py:135: error: X | Y syntax for unions requires Python 3.10  [syntax]
+Visualize/Visualize.py:535: error: X | Y syntax for unions requires Python 3.10  [syntax]
+Visualize/Visualize.py:881: error: X | Y syntax for unions requires Python 3.10  [syntax]
+fly-in.py:11: error: X | Y syntax for unions requires Python 3.10  [syntax]
+Found 12 errors in 5 files (checked 14 source files)
+make: *** [lint-mypy] Error 1
+
+pff:(master)$ make lint-strict
+python3 -m flake8 .
+python3 -m mypy . --strict
+PixelFont/PixelFont.py:1: error: Cannot find implementation or library stub for module named "PIL"  [import-not-found]
+PixelFont/PixelFont.py:107: error: Unused "type: ignore" comment  [unused-ignore]
+Common/Models.py:1: error: Cannot find implementation or library stub for module named "pydantic"  [import-not-found]
+Common/Models.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+Common/Models.py:5: error: Class cannot subclass "BaseModel" (has type "Any")  [misc]
+Common/Models.py:17: error: Class cannot subclass "BaseModel" (has type "Any")  [misc]
+Common/Models.py:31: error: Class cannot subclass "BaseModel" (has type "Any")  [misc]
+Common/Models.py:47: error: Class cannot subclass "BaseModel" (has type "Any")  [misc]
+MapParser/MapParser.py:3: error: Cannot find implementation or library stub for module named "pydantic"  [import-not-found]
+MapParser/MapParser.py:15: error: Class cannot subclass "BaseModel" (has type "Any")  [misc]
+MapParser/MapParser.py:32: error: Untyped decorator makes function "validate_map" untyped  [untyped-decorator]
+GraphAlgo/GraphAlgo.py:90: error: X | Y syntax for unions requires Python 3.10  [syntax]
+GraphAlgo/GraphAlgo.py:113: error: X | Y syntax for unions requires Python 3.10  [syntax]
+GraphAlgo/GraphAlgo.py:141: error: X | Y syntax for unions requires Python 3.10  [syntax]
+GraphAlgo/GraphAlgo.py:159: error: X | Y syntax for unions requires Python 3.10  [syntax]
+GraphAlgo/GraphAlgo.py:265: error: X | Y syntax for unions requires Python 3.10  [syntax]
+GraphAlgo/GraphAlgo.py:276: error: X | Y syntax for unions requires Python 3.10  [syntax]
+Config/Config.py:1: error: Cannot find implementation or library stub for module named "pydantic"  [import-not-found]
+Config/Config.py:4: error: Cannot find implementation or library stub for module named "PIL"  [import-not-found]
+Config/Config.py:74: error: Unused "type: ignore" comment  [unused-ignore]
+Config/Config.py:137: error: Class cannot subclass "BaseModel" (has type "Any")  [misc]
+Config/Config.py:149: error: Class cannot subclass "BaseModel" (has type "Any")  [misc]
+Config/Config.py:161: error: Class cannot subclass "BaseModel" (has type "Any")  [misc]
+Config/Config.py:183: error: Class cannot subclass "BaseModel" (has type "Any")  [misc]
+Config/Config.py:198: error: Class cannot subclass "BaseModel" (has type "Any")  [misc]
+Config/Config.py:212: error: Class cannot subclass "BaseModel" (has type "Any")  [misc]
+Config/Config.py:226: error: Class cannot subclass "BaseModel" (has type "Any")  [misc]
+Config/Config.py:240: error: Class cannot subclass "BaseModel" (has type "Any")  [misc]
+Config/Config.py:252: error: Class cannot subclass "BaseModel" (has type "Any")  [misc]
+Visualize/Visualize.py:135: error: X | Y syntax for unions requires Python 3.10  [syntax]
+Visualize/Visualize.py:535: error: X | Y syntax for unions requires Python 3.10  [syntax]
+Visualize/Visualize.py:881: error: X | Y syntax for unions requires Python 3.10  [syntax]
+fly-in.py:11: error: X | Y syntax for unions requires Python 3.10  [syntax]
+Found 32 errors in 7 files (checked 14 source files)
+make: *** [lint-mypy-strict] Error 1
