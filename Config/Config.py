@@ -3,6 +3,7 @@ from MapParser import MapData
 from PixelFont import Font, Glyph
 from PIL import Image
 from dataclasses import dataclass
+from typing import cast
 import tomli
 
 
@@ -71,7 +72,8 @@ class Shape:
         pixels = set()
         for y in range(img.height):
             for x in range(img.width):
-                r, g, b, a = img.getpixel((x, y))  # type: ignore
+                r, g, b, a = cast(tuple[int, int, int, int],
+                                  img.getpixel((x, y)))
                 if a > 0:
                     color = (r << 24) | (g << 16) | (b << 8) | a
                     pixels.add((x, y, color))

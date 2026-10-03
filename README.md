@@ -75,13 +75,26 @@ to the initial state and pauses so you can replay the simulation.
 | `make clean` | Remove `__pycache__` and `.mypy_cache` directories |
 | `make fclean` | Also remove the active environment's dependency stamp |
 | `make re` | Run `fclean`, then prepare the project again with `all` |
-| `make dev` | Install development dependencies, including Flake8 and mypy |
+| `make dev` | Install runtime dependencies and development tools, including Flake8 and mypy |
 | `make lint` | Run Flake8 and mypy with the subject's required flags |
 | `make lint-strict` | Run Flake8 and mypy with `--strict` |
 
 `all`, `fly-in`, `re`, `install`, `re-install`, `run`, `debug`, and `dev` require an active virtual
-environment. Lint commands require their tools to be available on `PATH`.
+environment. Lint commands require Python 3.10+ with the runtime dependencies,
+Flake8, and mypy installed in the same Python environment.
 Individual targets are `lint-flake8`, `lint-mypy`, and `lint-mypy-strict`.
+
+For development, activate your virtual environment and run `make dev` before
+`make lint` or `make lint-strict`. Mypy checks compatibility with Python 3.10.
+If macOS selects an older Python, create a new environment with an installed
+Python 3.10+ interpreter, for example:
+
+```bash
+python3.10 -m venv .venv
+source .venv/bin/activate
+make dev
+make lint
+```
 
 The installation stamp is stored at `$VIRTUAL_ENV/.fly-in-deps-installed`.
 Run `make install` again after creating or switching environments.

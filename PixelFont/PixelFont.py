@@ -1,5 +1,6 @@
 from PIL import Image
 from dataclasses import dataclass
+from typing import cast
 
 UPPERCASE = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 LOWERCASE = "abcdefghijklmnopqrstuvwxyz"
@@ -103,8 +104,9 @@ class Font:
             for y in range(glyph_h):
                 row = []
                 for x in range(glyph_w):
-                    pixel = True if raw[
-                        i * glyph_w + x, y][3] > 0 else False  # type: ignore
+                    rgba = cast(tuple[int, int, int, int],
+                                raw[i * glyph_w + x, y])
+                    pixel = rgba[3] > 0
                     row.append(pixel)
                 pixels.append(row)
             glyphs.append(Glyph(char, glyph_w, glyph_h, pixels))
