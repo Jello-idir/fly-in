@@ -51,13 +51,18 @@ end_hub:    ...     ←   must be exactly one, capacity in metadata is ignored
 ### Fields
 
 ```
-<name>          ←   unique; letters, digits, and underscores are accepted
+<name>          ←   unique; no whitespace or dashes; # starts a comment
 <x> <y>         ←   integer coordinates, duplicates are rejected
 ```
 
 ### Hub metadata (optional)
 
 Appended in square brackets after the coordinates:
+
+Separate fields with whitespace. Spaces around `=` are allowed. Keys may appear
+in any order, but each key must appear only once. For example,
+`[color=blue zone=normal]` is valid; `[color=bluezone=normal]` and
+`[zone=normal zone=priority]` are rejected.
 
 ```
 hub: <name> <x> <y>    → [key=value key=value ...] ← metadata is optional
@@ -213,6 +218,7 @@ such as a missing end hub, describe the problem without a specific source line.
     -Connection references an undefined hub
     -Duplicate connection (`a-b` / `b-a`)
     -Invalid zone type
+    -Duplicate metadata key
     -Non-positive `max_drones` or `max_link_capacity`
     -Malformed metadata block
     -Unrecognised line

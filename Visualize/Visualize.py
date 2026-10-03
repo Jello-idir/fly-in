@@ -882,7 +882,7 @@ class MlxWindow:
 
             # going to a hub
             try:
-                if to_hub := re.match(r"D(\d+)-(\w+)$", move):
+                if to_hub := re.fullmatch(r"D(\d+)-([^\s-]+)", move):
                     drone_id = int(to_hub.group(1))
                     dest_name = to_hub.group(2)
                     drone = self.drones[drone_id]
@@ -897,7 +897,9 @@ class MlxWindow:
                     )
 
                 # going to connection
-                elif to_connection := re.match(r"D(\d+)-(\w+)-(\w+)$", move):
+                elif to_connection := re.fullmatch(
+                    r"D(\d+)-([^\s-]+)-([^\s-]+)", move
+                ):
                     drone_id = int(to_connection.group(1))
                     hub_a_name = to_connection.group(2)
                     hub_b_name = to_connection.group(3)

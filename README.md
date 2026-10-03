@@ -115,9 +115,11 @@ For travel toward a restricted zone, a drone first appears on the connection
 stop appearing in the output.
 
 Unsupported single-word color names produce a warning on stderr and use the
-default dark gray color; they do not stop the simulation. The current parser
-accepts hub names containing letters, digits, and underscores, and requires
-unique hub coordinates.
+default dark gray color; they do not stop the simulation. Hub names may contain
+punctuation such as `roof.1` or `gate@east`, but cannot contain whitespace or
+dashes. `#` starts a comment. The current parser requires unique hub coordinates.
+Metadata fields must be separated by whitespace, and each key may appear only
+once per block.
 
 ### Display configuration
 

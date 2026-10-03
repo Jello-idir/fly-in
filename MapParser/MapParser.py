@@ -124,16 +124,26 @@ class MapData(BaseModel):
 
             if metadata_str:
                 metadata_str = metadata_str.strip()
-                if not re.fullmatch(
-                    r"(?:(?:color\s*=\s*[^\s\[\]=]+|"
-                    r"\w+\s*=\s*\w+)\s*)*", metadata_str
+                if metadata_str and not re.fullmatch(
+                    r"\w+\s*=\s*[^\s\[\]=]+"
+                    r"(?:\s+\w+\s*=\s*[^\s\[\]=]+)*", metadata_str
                 ):
                     raise ValueError(
                         "invalid hub metadata."
                     )
 
-                metadata_dict = dict(
-                    re.findall(r"(\w+)\s*=\s*([^\s\[\]=]+)", metadata_str))
+                metadata_dict = {}
+                for key, value in re.findall(
+                    r"(\w+)\s*=\s*([^\s\[\]=]+)", metadata_str
+                ):
+                    if key in metadata_dict:
+                        raise ValueError(f"duplicate metadata key '{key}'.")
+                    metadata_dict[key] = value
+
+                if "max_drones" in metadata_dict and not re.fullmatch(
+                    r"\d+", metadata_dict["max_drones"]
+                ):
+                    raise ValueError("max_drones must be a positive integer.")
 
                 if "color" in metadata_dict:
                     color_name = metadata_dict["color"]
@@ -232,7 +242,7 @@ class MapData(BaseModel):
         m_drones = re.compile(r"nb_drones\s*:\s*(-?\d+)\s*$")
         m_hubs = re.compile(
             r"""
-            (start_hub|hub|end_hub)\s*:\s*(\w+)
+            (start_hub|hub|end_hub)\s*:\s*([^\s-]+)
             \s+(-?\d+)\s+(-?\d+)
             (?:\s+\[([^\]]*)\])?
             $
@@ -241,7 +251,7 @@ class MapData(BaseModel):
         )
         m_connections = re.compile(
             r"""
-            connection\s*:\s*(\w+)-(\w+)
+            connection\s*:\s*([^\s-]+)-([^\s-]+)
             (?:\s+\[\s*max_link_capacity\s*=\s*(\d+)\s*\])?
             $
             """,
