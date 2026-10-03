@@ -5,14 +5,31 @@ from itertools import count, zip_longest
 
 
 class Node:
-    """A hub with routing capacity, zone rules, and neighbors."""
+    """A hub with routing capacity, zone rules, and neighbors.
+
+    Attributes:
+        name: Unique hub name.
+        capacity: Configured hub occupancy limit.
+        type: Hub role.
+        zone: Zone access and movement-cost category.
+        cnxs: Incident undirected edges.
+        adjacents: Neighboring nodes.
+    """
+
     def __init__(
             self, name: str,
             capacity: int,
             hubtype: HubType,
             zonetype: ZoneType
             ):
-        """Set hub properties and initialize its connection lists."""
+        """Set hub properties and initialize its connection lists.
+
+        Args:
+            name: Unique hub or connection name.
+            capacity: Maximum simultaneous occupants or crossings.
+            hubtype: Role of the hub in the route.
+            zonetype: Access rule and arrival cost for the hub.
+        """
         self.name = name
         self.capacity = capacity
         self.type = hubtype
@@ -22,14 +39,30 @@ class Node:
 
 
 class Edge:
-    """An undirected connection with a per-turn crossing capacity."""
+    """An undirected connection with a per-turn crossing capacity.
+
+    Attributes:
+        name: Connection name formed from its endpoints.
+        capacity: Maximum crossings started per turn.
+        node_a: First endpoint node.
+        node_b: Second endpoint node.
+    """
+
     def __init__(
             self, name: str,
             link_capacity: int,
             node_a: Node,
             node_b: Node
             ):
-        """Store the connection name, capacity, and endpoint nodes."""
+        """Store the connection name, capacity, and endpoint nodes.
+
+        Args:
+            name: Unique hub or connection name.
+            link_capacity: Maximum drones entering this connection in one
+                turn.
+            node_a: First endpoint of the undirected connection.
+            node_b: Second endpoint of the undirected connection.
+        """
         self.name = name
         self.capacity = link_capacity
         self.node_a = node_a
@@ -37,20 +70,43 @@ class Edge:
 
 
 class Drone:
-    """A drone and its planned position for each turn."""
+    """A drone and its planned position for each turn.
+
+    Attributes:
+        id: Unique drone identifier.
+        path: Position at each planned turn, including the starting hub.
+    """
+
     def __init__(
         self,
         id: int,
     ):
-        """Assign the drone ID and initialize an empty route."""
+        """Assign the drone ID and initialize an empty route.
+
+        Args:
+            id: Unique drone identifier.
+        """
         self.id = id
         self.path: list[Node | Edge] = []
 
 
 class Graph:
-    """The hub network and reservations for scheduled drone routes."""
+    """The hub network and reservations for scheduled drone routes.
+
+    Attributes:
+        nodes: Hub nodes indexed by name.
+        edges: Undirected connections indexed by name.
+        drons: Drones indexed by ID.
+        capacity_changes: Remaining node and edge capacity indexed by turn.
+    """
+
     def __init__(self, mapdata: MapData):
-        """Build nodes, edges, and drones from a validated map."""
+        """Build nodes, edges, and drones from a validated map.
+
+        Args:
+            mapdata: Validated map containing hubs, connections, and
+                drones.
+        """
         self.nodes: dict[str, Node] = {}
         self.edges: dict[str, Edge] = {}
         self.drons: dict[int, Drone] = {}
@@ -83,7 +139,21 @@ class Graph:
             self.drons[drone_id] = Drone(id=drone_id)
 
     def dijkstra(self, start: Node, end: Node) -> list[Node | Edge]:
-        """Find an earliest-arrival route using existing reservations."""
+        """Find an earliest-arrival route using existing reservations.
+
+        Args:
+            start: Starting node.
+            end: Destination node.
+
+        Returns:
+            list[Node | Edge]: Positions from start to end, one per turn,
+                including repeated nodes for waiting and edges for
+                restricted-zone transit.
+
+        Raises:
+            ValueError: No route can be found with the existing
+                reservations.
+        """
         counter = count(start=1, step=2)
         last_reserved_turn = max(self.capacity_changes, default=0)
         h: list[tuple[int, int, int, Node, list[Node | Edge]]] = [
@@ -178,7 +248,11 @@ class Graph:
                 )
 
     def navigate_drones(self) -> None:
-        """Plan each drone's route and reserve hub and link capacity."""
+        """Plan each drone's route and reserve hub and link capacity.
+
+        Raises:
+            ValueError: A drone cannot be routed to the destination.
+        """
         start_node = next(
             node for node in self.nodes.values()
             if node.type == HubType.start_hub
@@ -189,7 +263,16 @@ class Graph:
         )
 
         def _nodes_to_edges_path(path: list[Node | Edge]) -> list[Edge | None]:
-            """Return links reserved each turn, or None for no reservation."""
+            """Return links reserved each turn, or None for no reservation.
+
+            Args:
+                path: Route positions, one per turn.
+
+            Returns:
+                list[Edge | None]: One reservation per transition. Waiting
+                    and arrival from a restricted connection have no link
+                    reservation.
+            """
             list_of_edges: list[Edge | None] = []
             i = 0
             while i < len(path) - 1:
@@ -243,7 +326,13 @@ class Graph:
                 )
 
     def get_solution(self) -> tuple[str, str]:
-        """Return movement output and animation frames as turn-by-turn text."""
+        """Return movement output and animation frames as turn-by-turn text.
+
+        Returns:
+            tuple[str, str]: Movement-only output and animation frames, in
+                that order. Both contain one line per turn; animation
+                includes waits.
+        """
 
         output_list: list[list[str]] = []
         animation_list: list[list[str]] = []

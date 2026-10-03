@@ -3,6 +3,7 @@ from enum import Enum
 
 class ColorType(int, Enum):
     """Named RGBA colors and the rainbow rendering marker."""
+
     # main
     red = (0xE04749 << 8) + 0xFF
     green = (0x65CD28 << 8) + 0xFF
@@ -40,6 +41,7 @@ class ColorType(int, Enum):
 
 class ZoneType(str, Enum):
     """Hub access rules and travel-cost categories."""
+
     normal = "normal"
     blocked = "blocked"
     restricted = "restricted"
@@ -48,6 +50,7 @@ class ZoneType(str, Enum):
 
 class HubType(str, Enum):
     """Start, intermediate, and destination hub roles."""
+
     start_hub = "start_hub"
     hub = "hub"
     end_hub = "end_hub"

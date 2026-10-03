@@ -51,7 +51,7 @@ end_hub:    ...     ←   must be exactly one, capacity in metadata is ignored
 ### Fields
 
 ```
-<name>          ←   unique across all hubs, no dashes or spaces
+<name>          ←   unique; letters, digits, and underscores are accepted
 <x> <y>         ←   integer coordinates, duplicates are rejected
 ```
 
@@ -64,13 +64,19 @@ hub: <name> <x> <y>    → [key=value key=value ...] ← metadata is optional
 ```
 ```
 zone=...        ←   can be `normal`, `blocked`, `restricted`, or `priority`
-color=...       ←   can be any of the colors in the color table below
+color=...       ←   a single-word name; supported colors are listed below
 max_drones=...  ←   positive integer, ignored for start_hub and end_hub
 ```
 
 ## Color Table
 
 Used in hub metadata as `color=<name>`.
+
+Unsupported names are accepted with a warning on stderr and displayed using
+the default color (`none`, dark gray). The simulation continues normally.
+For example, `[color=chartreuse]` warns that `chartreuse` is not supported.
+Color names are case-sensitive. Empty values and malformed metadata remain
+parsing errors.
 
     -white
     -none
@@ -84,13 +90,11 @@ Used in hub metadata as `color=<name>`.
 
     -orange
     -darkorange
-    -coral
     -brown
 
     -yellow
     -darkyellow
     -gold
-    -khaki
 
     -green
     -darkgreen
@@ -100,7 +104,7 @@ Used in hub metadata as `color=<name>`.
     -blue
     -darkblue
     -cyan
-    -aqua
+    -indigo
 
     -purple
     -violet
@@ -192,8 +196,11 @@ connection:     N2-E            [max_link_capacity=1]
 ```
 ---
 
-# WHY IM I GETTING AN ERROR?
-check the line number in the error message, it will point to the exact line that is malformed, check for typos, missing fields, or invalid values.
+# Understanding errors
+
+For malformed definitions, the error includes the offending line and its cause.
+Check for typos, missing fields, or invalid values. Whole-map validation errors,
+such as a missing end hub, describe the problem without a specific source line.
 
 ### Possible errors:
 
@@ -206,7 +213,6 @@ check the line number in the error message, it will point to the exact line that
     -Connection references an undefined hub
     -Duplicate connection (`a-b` / `b-a`)
     -Invalid zone type
-    -Invalid color name
     -Non-positive `max_drones` or `max_link_capacity`
     -Malformed metadata block
     -Unrecognised line

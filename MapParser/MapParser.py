@@ -1,4 +1,5 @@
 import re
+import sys
 from pydantic import BaseModel, Field, model_validator
 from Common import (
     DroneBase,
@@ -12,7 +13,16 @@ from Common import (
 
 
 class MapData(BaseModel):
-    """Validated hubs, connections, drones, and normalized map bounds."""
+    """Validated hubs, connections, drones, and normalized map bounds.
+
+    Attributes:
+        nb_drones: Positive number of drones to route.
+        hubs: Hub definitions indexed by unique name.
+        connections: Validated undirected links.
+        drones: Initial drone models indexed by ID.
+        size: Normalized map width and height in grid cells.
+    """
+
     nb_drones: int = Field(gt=0)
     hubs: dict[str, HubBase]
     connections: list[ConnectionBase]
@@ -21,7 +31,15 @@ class MapData(BaseModel):
 
     @model_validator(mode="after")
     def validate_map(self) -> "MapData":
-        """Require hubs, connections, and exactly one start and end hub."""
+        """Require hubs, connections, and exactly one start and end hub.
+
+        Returns:
+            MapData: This map after structural validation.
+
+        Raises:
+            ValueError: Hubs or connections are absent, or endpoint counts
+                differ from exactly one start and one end.
+        """
         if not self.hubs:
             raise ValueError("no hubs defined.")
         if not self.connections:
@@ -48,7 +66,22 @@ class MapData(BaseModel):
 
     @classmethod
     def from_file(cls, file_path: str) -> "MapData":
-        """Parse and validate a map, then normalize its grid coordinates."""
+        """Parse and validate a map, then normalize its grid coordinates.
+
+        Unsupported color names produce a warning on stderr and use the
+        default display color without preventing the map from loading.
+
+        Args:
+            file_path: Path to the map text file.
+
+        Returns:
+            MapData: Parsed map with nonnegative coordinates and
+                initialized drones.
+
+        Raises:
+            OSError: The map file cannot be read.
+            ValueError: A definition or the completed map fails validation.
+        """
         nb_drones: int = 0
         hubs: dict[str, HubBase] = {}
         connections: list[ConnectionBase] = []
@@ -56,14 +89,31 @@ class MapData(BaseModel):
         connection_pairs: set[frozenset[str]] = set()
 
         def _handle_nb_drones(match: re.Match[str]) -> None:
-            """Read a positive drone count from a matched definition."""
+            """Read a positive drone count from a matched definition.
+
+            Args:
+                match: Regular-expression match for the current map
+                    definition.
+
+            Raises:
+                ValueError: The drone count is not positive.
+            """
             nonlocal nb_drones
             nb_drones = int(match.group(1))
             if nb_drones <= 0:
                 raise ValueError("number of drones must be positive.")
 
         def _handle_hub(match: re.Match[str]) -> None:
-            """Validate and add a hub with a unique name and position."""
+            """Validate and add a hub with a unique name and position.
+
+            Args:
+                match: Regular-expression match for the current map
+                    definition.
+
+            Raises:
+                ValueError: The hub duplicates a name or position, or has
+                    invalid data.
+            """
 
             hub_type, hub_name, x, y, metadata_str = match.groups()
 
@@ -74,23 +124,27 @@ class MapData(BaseModel):
 
             if metadata_str:
                 metadata_str = metadata_str.strip()
-                if not re.fullmatch(r"(\w+\s*=\s*\w+\s*)*", metadata_str):
+                if not re.fullmatch(
+                    r"(?:(?:color\s*=\s*[^\s\[\]=]+|"
+                    r"\w+\s*=\s*\w+)\s*)*", metadata_str
+                ):
                     raise ValueError(
                         "invalid hub metadata."
                     )
 
                 metadata_dict = dict(
-                    re.findall(r"(\w+)\s*=\s*(\w+)", metadata_str))
+                    re.findall(r"(\w+)\s*=\s*([^\s\[\]=]+)", metadata_str))
 
                 if "color" in metadata_dict:
+                    color_name = metadata_dict["color"]
                     try:
-                        metadata_dict["color"] = ColorType[
-                            metadata_dict["color"]
-                            ]
+                        metadata_dict["color"] = ColorType[color_name]
                     except KeyError:
-                        raise ValueError(
-                            "invalid color."
+                        sys.stderr.write(
+                            f"Warning: Color '{color_name}' is not supported "
+                            f"for hub '{hub_name}'; using the default color.\n"
                         )
+                        metadata_dict["color"] = ColorType.none
 
                 if "zone" in metadata_dict:
                     try:
@@ -136,7 +190,16 @@ class MapData(BaseModel):
                 )
 
         def _handle_connection(match: re.Match[str]) -> None:
-            """Validate and add a link between distinct, existing hubs."""
+            """Validate and add a link between distinct, existing hubs.
+
+            Args:
+                match: Regular-expression match for the current map
+                    definition.
+
+            Raises:
+                ValueError: The link is duplicated, self-referential,
+                    undefined, or has invalid capacity.
+            """
 
             hub_a, hub_b, cap = match.groups()
 

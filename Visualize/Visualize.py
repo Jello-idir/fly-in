@@ -65,7 +65,17 @@ MIN_INDEX = 5
 
 
 class Entity:
-    """A colored sprite with grid coordinates and a screen position."""
+    """A colored sprite with grid coordinates and a screen position.
+
+    Attributes:
+        color: Packed RGBA sprite tint.
+        shape: Visible sprite pixels and dimensions.
+        coord: Grid coordinates.
+        size: Sprite dimensions in pixels.
+        pos: Top-left window position in pixels.
+        img: Pointer to the native sprite image.
+    """
+
     def __init__(
         self,
         mlx_ptr: mlx_t,
@@ -74,7 +84,15 @@ class Entity:
         color: int,
         shape: Shape,
     ):
-        """Convert grid coordinates to pixels and allocate a sprite image."""
+        """Convert grid coordinates to pixels and allocate a sprite image.
+
+        Args:
+            mlx_ptr: Pointer to the native MLX window context.
+            cfg: Display settings, sprite shapes, and font glyphs.
+            cord: Grid coordinates before conversion to window pixels.
+            color: Packed 32-bit RGBA drawing color.
+            shape: Visible sprite pixels and dimensions.
+        """
         self.color = color
         self.shape = shape
         self.coord = cord
@@ -92,14 +110,27 @@ class Entity:
 
 
 class Drone(Entity):
-    """A rendered drone with an ID and current hub or connection."""
+    """A rendered drone with an ID and current hub or connection.
+
+    Attributes:
+        id: Unique drone identifier.
+        location: Current hub or connection during playback.
+    """
+
     def __init__(
         self, mlx_ptr: mlx_t,
         cfg: Config,
         drone_base: DroneBase,
         current_hub: 'HubStation'
     ) -> None:
-        """Assign the drone's starting location, color, and sprite."""
+        """Assign the drone's starting location, color, and sprite.
+
+        Args:
+            mlx_ptr: Pointer to the native MLX window context.
+            cfg: Display settings, sprite shapes, and font glyphs.
+            drone_base: Drone identifier and initial grid coordinates.
+            current_hub: Hub where the drone initially resides.
+        """
         self.id: int = drone_base.id
         self.location: HubStation | Connection = current_hub
         color = list(ColorType)[(self.id - 1) % (len(list(ColorType)) - 1)]
@@ -111,14 +142,31 @@ class Drone(Entity):
 
 
 class HubStation(Entity):
-    """A rendered hub with occupancy, labels, and incident connections."""
+    """A rendered hub with occupancy, labels, and incident connections.
+
+    Attributes:
+        name: Unique hub name.
+        metadata: Zone, color, and capacity settings.
+        type: Hub role.
+        drones: Drones assigned to this hub.
+        connections: Incident rendered connections.
+        img_name: Native image for the name label.
+        img_stat: Native image for the occupancy label.
+    """
+
     def __init__(
         self,
         mlx_ptr: mlx_t,
         cfg: Config,
         hub_model: HubBase,
     ) -> None:
-        """Create the hub sprite, label images, and occupancy lists."""
+        """Create the hub sprite, label images, and occupancy lists.
+
+        Args:
+            mlx_ptr: Pointer to the native MLX window context.
+            cfg: Display settings, sprite shapes, and font glyphs.
+            hub_model: Validated hub definition to render.
+        """
         self.name: str = hub_model.name
         self.metadata: HubMetadata = hub_model.metadata
         self.type: HubType = hub_model.type
@@ -144,7 +192,16 @@ class HubStation(Entity):
     def get_shape_by_type(
         hub_type: HubType, metadata: HubMetadata, cfg: Config
     ) -> Shape:
-        """Choose a sprite from the hub role, then its zone type."""
+        """Choose a sprite from the hub role, then its zone type.
+
+        Args:
+            hub_type: Start, intermediate, or destination role.
+            metadata: Zone, color, and capacity settings for the hub.
+            cfg: Display settings, sprite shapes, and font glyphs.
+
+        Returns:
+            Shape: Sprite for the hub role or, for ordinary hubs, its zone.
+        """
         if hub_type == HubType.start_hub:
             return cfg.shapes.hub_start
         elif hub_type == HubType.end_hub:
@@ -160,13 +217,30 @@ class HubStation(Entity):
 
 
 class Connection:
-    """A rendered link with capacity, endpoints, and drones in transit."""
+    """A rendered link with capacity, endpoints, and drones in transit.
+
+    Attributes:
+        hub_a: First endpoint hub.
+        hub_b: Second endpoint hub.
+        capacity: Maximum simultaneous crossings.
+        start_pos: Center of the first hub in window pixels.
+        end_pos: Center of the second hub in window pixels.
+        center: Midpoint of the connection in window pixels.
+        drones: Drones in transit on this connection.
+    """
+
     def __init__(self,
                  hub_a: HubStation,
                  hub_b: HubStation,
                  capacity: int
                  ):
-        """Store the hubs and capacity, and calculate screen endpoints."""
+        """Store the hubs and capacity, and calculate screen endpoints.
+
+        Args:
+            hub_a: First rendered endpoint hub.
+            hub_b: Second rendered endpoint hub.
+            capacity: Maximum simultaneous occupants or crossings.
+        """
         self.hub_a = hub_a
         self.hub_b = hub_b
         self.capacity = capacity
@@ -186,9 +260,29 @@ class Connection:
 
 
 class MlxWindow:
-    """The MLX window, scene rendering, and drone animation controls."""
+    """The MLX window, scene rendering, and drone animation controls.
+
+    Attributes:
+        connections: Rendered undirected links.
+        mlx_ptr: Pointer to the native MLX window context.
+        hubs: Rendered hubs indexed by name.
+        drones: Rendered drones indexed by ID.
+        cfg: Validated display settings and assets.
+        is_running: Whether the native event loop is active.
+        img_bg: Native background image.
+        img_stats: Native turn-counter image.
+        img_trail: Native drone-trail image.
+    """
+
     def __init__(self, cfg: Config) -> None:
-        """Create the window and drawing buffers; reject failed MLX setup."""
+        """Create the window and drawing buffers; reject failed MLX setup.
+
+        Args:
+            cfg: Display settings, sprite shapes, and font glyphs.
+
+        Raises:
+            RuntimeError: The native MLX window cannot be initialized.
+        """
         self.connections: list[Connection] = []
         self.mlx_ptr = mlx.mlx_init(
             cfg.window_size[0], cfg.window_size[1], b"Fly-in", True
@@ -213,7 +307,20 @@ class MlxWindow:
 
     @classmethod
     def from_map(cls, mapdata: MapData, cfg: Config) -> 'MlxWindow':
-        """Create the scene and place every drone at the start hub."""
+        """Create the scene and place every drone at the start hub.
+
+        Args:
+            mapdata: Validated map containing hubs, connections, and
+                drones.
+            cfg: Display settings, sprite shapes, and font glyphs.
+
+        Returns:
+            MlxWindow: Initialized window with hubs, drones, and
+                connections.
+
+        Raises:
+            RuntimeError: The native MLX window cannot be initialized.
+        """
         manager = cls(cfg)
         # creating hub entities
         for hub in mapdata.hubs.values():
@@ -259,7 +366,12 @@ class MlxWindow:
             img: mlx_image_t,
             color: int
             ) -> None:
-        """Fill an RGBA image with one color, copying a row at a time."""
+        """Fill an RGBA image with one color, copying a row at a time.
+
+        Args:
+            img: Pointer to the MLX image whose pixel buffer is modified.
+            color: Packed 32-bit RGBA drawing color.
+        """
         width = img.contents.width
         height = img.contents.height
         pointer = ctypes.addressof(img.contents.pixels.contents)
@@ -278,7 +390,12 @@ class MlxWindow:
         size: int = 1,
         color: int = 0xFFFFFFFF
     ) -> None:
-        """Redraw the current and total turn counts."""
+        """Redraw the current and total turn counts.
+
+        Args:
+            size: Integer scale factor for the pixel font.
+            color: Packed 32-bit RGBA drawing color.
+        """
         self._fill_image(self.img_stats, 0x00000000)
         total_turns_count = len(self._solution.splitlines())
         self._write_text(
@@ -294,7 +411,12 @@ class MlxWindow:
             img: mlx_image_t,
             bar_thickness: int = 50
             ) -> None:
-        """Paint opaque black bars along the image's top and bottom."""
+        """Paint opaque black bars along the image's top and bottom.
+
+        Args:
+            img: Pointer to the MLX image whose pixel buffer is modified.
+            bar_thickness: Height of each black bar in pixels.
+        """
         for y in range(bar_thickness):
             for x in range(img.contents.width):
                 # Top bar
@@ -322,7 +444,15 @@ class MlxWindow:
         size: int = 1,
         color: int = 0xFFFFFFFF,
     ) -> None:
-        """Draw scaled text with clipping and '#' for missing glyphs."""
+        """Draw scaled text with clipping and '#' for missing glyphs.
+
+        Args:
+            img: Pointer to the MLX image whose pixel buffer is modified.
+            text: Text to render, including optional newlines.
+            pos: Top-left drawing position in image pixels.
+            size: Integer scale factor for the pixel font.
+            color: Packed 32-bit RGBA drawing color.
+        """
         is_trancated = False
         init_x, init_y = pos
         x, y = init_x, init_y
@@ -359,7 +489,11 @@ class MlxWindow:
             x += glyph.width * size
 
     def _draw_entity(self, entity: Entity) -> None:
-        """Paint a sprite with its entity color or rainbow bands."""
+        """Paint a sprite with its entity color or rainbow bands.
+
+        Args:
+            entity: Sprite entity to draw or attach to the window.
+        """
         hub_color = entity.color
         if (isinstance(entity, HubStation) and
                 entity.color == ColorType.rainbow):
@@ -400,7 +534,12 @@ class MlxWindow:
         entity: Entity,
         pos: tuple[int, int] | None = None
     ) -> None:
-        """Place a sprite in the window and assign its drawing depth."""
+        """Place a sprite in the window and assign its drawing depth.
+
+        Args:
+            entity: Sprite entity to draw or attach to the window.
+            pos: Top-left window position in pixels; None uses entity.pos.
+        """
         if pos is None:
             pos = entity.pos
         mlx.mlx_image_to_window(self.mlx_ptr, entity.img, pos[0], pos[1])
@@ -416,7 +555,12 @@ class MlxWindow:
             self, hub: HubStation,
             uppercase: bool = True
             ) -> None:
-        """Draw and place a shortened hub label above its sprite."""
+        """Draw and place a shortened hub label above its sprite.
+
+        Args:
+            hub: Hub whose label or occupancy is rendered.
+            uppercase: Whether to use uppercase instead of title case.
+        """
         name = hub.name
         if len(name) > 10:
             name = name[:8] + ".."
@@ -439,7 +583,12 @@ class MlxWindow:
             self, hub: HubStation,
             uppercase: bool = False
             ) -> None:
-        """Draw the occupancy/capacity label, colored by fullness."""
+        """Draw the occupancy/capacity label, colored by fullness.
+
+        Args:
+            hub: Hub whose label or occupancy is rendered.
+            uppercase: Whether to use uppercase instead of title case.
+        """
         n_of_drones = len(hub.drones)
         cap_of_hub = hub.metadata.max_drones
 
@@ -458,7 +607,12 @@ class MlxWindow:
     def _draw_attach_hub_stats(
         self, hub: HubStation, uppercase: bool = False
     ) -> None:
-        """Draw and place the occupancy label below the hub."""
+        """Draw and place the occupancy label below the hub.
+
+        Args:
+            hub: Hub whose label or occupancy is rendered.
+            uppercase: Whether to use uppercase instead of title case.
+        """
         self._draw_hub_stats(hub, uppercase=uppercase)
         mlx.mlx_image_to_window(
             self.mlx_ptr,
@@ -471,7 +625,12 @@ class MlxWindow:
     def _update_hub_stats(
             self, hub: HubStation, is_upper: bool = False
             ) -> None:
-        """Clear and redraw a hub's occupancy label."""
+        """Clear and redraw a hub's occupancy label.
+
+        Args:
+            hub: Hub whose label or occupancy is rendered.
+            is_upper: Whether to render the occupancy text in uppercase.
+        """
         self._fill_image(hub.img_stat, 0x00000000)
         self._draw_hub_stats(hub, uppercase=is_upper)
 
@@ -483,7 +642,16 @@ class MlxWindow:
         color: int = 0xFFFFFFAA,
         thickness: int = 0,
     ) -> None:
-        """Draw a thick RGBA line clipped to the image bounds."""
+        """Draw a thick RGBA line clipped to the image bounds.
+
+        Args:
+            img: Pointer to the MLX image whose pixel buffer is modified.
+            start: Starting point in image pixels.
+            end: Ending point in image pixels.
+            color: Packed 32-bit RGBA drawing color.
+            thickness: Brush radius in pixels; zero draws a one-pixel-wide
+                line.
+        """
         x1, y1 = start
         x2, y2 = end
 
@@ -528,7 +696,16 @@ class MlxWindow:
         color: int = 0xFFFFFFAA,
         thickness: int = 0,
     ) -> None:
-        """Draw a connection line over a wider outline."""
+        """Draw a connection line over a wider outline.
+
+        Args:
+            img: Pointer to the MLX image whose pixel buffer is modified.
+            start: Starting point in image pixels.
+            end: Ending point in image pixels.
+            color: Packed 32-bit RGBA drawing color.
+            thickness: Brush radius in pixels; zero draws a one-pixel-wide
+                line.
+        """
         stroke_color = self.cfg.connection.stroke_color
         self._draw_line(
             img, start, end, color=stroke_color, thickness=thickness + 1)
@@ -537,7 +714,11 @@ class MlxWindow:
 
     def _draw_connections(
             self, color: int = 0xFFFFFF50) -> None:
-        """Draw all connections and their capacity labels."""
+        """Draw all connections and their capacity labels.
+
+        Args:
+            color: Packed 32-bit RGBA drawing color.
+        """
         for conn in self.connections:
             hub_a = conn.hub_a
             hub_b = conn.hub_b
@@ -806,7 +987,11 @@ class MlxWindow:
     def _loop_hook(
             self, param: ctypes.c_void_p = None  # type: ignore
             ) -> None:
-        """Advance animation when playback is active and a frame is due."""
+        """Advance animation when playback is active and a frame is due.
+
+        Args:
+            param: Unused user-data pointer supplied by the MLX callback.
+        """
         global LAST_STEP_TIME
 
         if not ANIMATING:
@@ -824,7 +1009,13 @@ class MlxWindow:
             keydata: mlx_key_data_t,
             param: ctypes.c_void_p = None  # type: ignore
             ) -> None:
-        """Handle controls; repeat only speed changes and exit requests."""
+        """Handle controls; repeat only speed changes and exit requests.
+
+        Args:
+            keydata: Keyboard event containing the key and press/repeat
+                action.
+            param: Unused user-data pointer supplied by the MLX callback.
+        """
         global ANIMATING
         global STEPS
         global STEP_IDX
@@ -872,9 +1063,13 @@ class MlxWindow:
         self,
         solution: str,
     ) -> None:
+        """Render the scene, play the supplied turns, and clean up the loop.
 
+        Args:
+            solution: Turn-by-turn animation text, including stationary
+                drone positions.
+        """
         # background image
-        """Render the scene, play the supplied turns, and clean up the loop."""
         mlx.mlx_image_to_window(self.mlx_ptr, self.img_bg, 0, 0)
         self.img_bg.contents.instances[0].z = DEPTH_BG
         self._fill_image(self.img_bg, self.cfg.appearance.background_color)

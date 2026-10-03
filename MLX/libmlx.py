@@ -223,7 +223,15 @@ MLX_SETTINGS_MAX = (5,)  # Setting count.
 
 
 class mlx_texture_t(ctypes.Structure):
-    """Native texture dimensions, pixel format, and pixel buffer."""
+    """Native texture dimensions, pixel format, and pixel buffer.
+
+    Attributes:
+        width: Texture width in pixels.
+        height: Texture height in pixels.
+        bytes_per_pixel: Number of bytes encoding each pixel.
+        pixels: Pointer to the native pixel buffer.
+    """
+
     _fields_ = [
         ("width", c_uint32),
         ("height", c_uint32),
@@ -233,12 +241,28 @@ class mlx_texture_t(ctypes.Structure):
 
 
 class mlx_instance_t(ctypes.Structure):
-    """A placed image instance with position, depth, and visibility."""
+    """A placed image instance with position, depth, and visibility.
+
+    Attributes:
+        x: Horizontal window position.
+        y: Vertical window position.
+        z: Drawing depth.
+        enabled: Whether the instance is visible.
+    """
+
     _fields_ = [("x", c_int32), ("y", c_int32), ("z", c_int32), ("enabled", c_bool)]
 
 
 class xpm_t(ctypes.Structure):
-    """Native XPM texture and its color-encoding metadata."""
+    """Native XPM texture and its color-encoding metadata.
+
+    Attributes:
+        texture: Embedded native texture.
+        color_count: Number of colors in the palette.
+        cpp: Characters per encoded pixel.
+        mode: Native XPM encoding mode.
+    """
+
     _fields_ = [
         ("texture", mlx_texture_t),
         ("color_count", c_int32),
@@ -248,7 +272,15 @@ class xpm_t(ctypes.Structure):
 
 
 class mlx_key_data_t(ctypes.Structure):
-    """A keyboard event with key, action, and modifier data."""
+    """A keyboard event with key, action, and modifier data.
+
+    Attributes:
+        key: MLX key code.
+        action: Press, release, or repeat action.
+        os_key: Platform-specific key code.
+        modifier: Active keyboard-modifier bitmask.
+    """
+
     _fields_ = [
         ("key", c_int32),  # ENUM
         ("action", c_int32),  # ENUM
@@ -258,7 +290,18 @@ class mlx_key_data_t(ctypes.Structure):
 
 
 class mlx_image_t(ctypes.Structure):
-    """Native image data and its instances in the window."""
+    """Native image data and its instances in the window.
+
+    Attributes:
+        width: Image width in pixels.
+        height: Image height in pixels.
+        pixels: Pointer to packed RGBA pixels.
+        instances: Pointer to image placements in the window.
+        count: Number of image instances.
+        enabled: Whether the image is rendered.
+        context: Opaque native image context.
+    """
+
     _fields_ = [
         ("width", c_uint32),
         ("height", c_uint32),
@@ -271,7 +314,16 @@ class mlx_image_t(ctypes.Structure):
 
 
 class mlx_t(ctypes.Structure):
-    """Native window context, dimensions, and frame timing."""
+    """Native window context, dimensions, and frame timing.
+
+    Attributes:
+        window: Opaque native window pointer.
+        context: Opaque graphics context pointer.
+        width: Window width in pixels.
+        height: Window height in pixels.
+        delta_time: Elapsed seconds since the previous frame.
+    """
+
     _fields_ = [
         ("window", c_void_p),
         ("context", c_void_p),

@@ -6,18 +6,21 @@ from MapParser import MapData
 from GraphAlgo import Graph
 from Config import Config
 
-# the project depends on the following packages:
-# pydantic, pillow
-
-# without using util method
-
 RED = "\033[31m"
 RESET = "\033[0m"
 window: MlxWindow | None = None
 
 
 def signal_handler(sig, frame):  # type: ignore
-    """Exit on SIGINT during setup or planning; close active playback."""
+    """Exit on SIGINT during setup or planning; close active playback.
+
+    Args:
+        sig: Signal number supplied by Python; unused by the handler.
+        frame: Interrupted stack frame, or None; unused by the handler.
+
+    Raises:
+        SystemExit: No playback loop is active; exit with status 130.
+    """
     if window is None or not window.is_running:
         raise SystemExit(130)
     mlx.mlx_close_window(window.mlx_ptr)
@@ -26,7 +29,6 @@ def signal_handler(sig, frame):  # type: ignore
 if __name__ == "__main__":
     # Set up signal handler for graceful exit on Ctrl+C
     signal.signal(signal.SIGINT, signal_handler)
-    # ---------------------------------------
 
     # parsing
     try:
@@ -34,13 +36,12 @@ if __name__ == "__main__":
     except Exception as e:
         sys.stderr.write(f"{RED}Map Error:{RESET} {e}\n")
         sys.exit(1)
-    # -------------------------------------
 
     # config init
     try:
         cfg = Config.from_mapdata(mapdata)
     except Exception as e:
-        sys.stderr.write(f"\033[31mConfig Error:\033[0m {e}\n")
+        sys.stderr.write(f"{RED}Config Error:{RESET} {e}\n")
         sys.exit(1)
 
     # mlx window init
@@ -78,4 +79,3 @@ if __name__ == "__main__":
         sys.exit(1)
 
     sys.exit(0)
-    # ----------

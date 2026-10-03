@@ -1,218 +1,191 @@
 *This project has been created as part of the 42 curriculum by aait-idi.*
 
-<img
-src="docs/fly-in.png"
-/>
+# Fly-in
 
-# Description
-the project - as you read in the above section - is about navigating multiple drones through connected hubs while respecting hubs max drone capacity and connections max link capacities as efficent as possible, don't worry if you got confused already :] ill explain everything in details.
+![Drone routing visualization](docs/fly-in.png)
 
+## Description
 
-# Instructions
+Fly-in routes multiple drones from a starting hub to a destination through an
+undirected network. It plans simultaneous movements while respecting hub and
+connection capacities, blocked zones, and the extra travel time needed to enter
+restricted zones. The goal is to deliver every drone in as few turns as possible.
 
-## Usage
+The program prints a movement schedule to the terminal and displays it in an
+interactive MLX42 window.
 
-### Prerequisites
+## Instructions
 
-All `make` commands require an active Python virtual environment. Create and activate one before running anything:
+### Requirements and setup
+
+Use Python 3.10 or later and run commands from the project root. The graphical
+interface requires a working desktop display and an MLX42 shared library
+compatible with your system. Linux and macOS library files are included as
+`libmlx42.so` and `libmlx42.dylib`; the loader also supports Windows if a
+compatible `libmlx42.dll` is supplied.
+
+Create and activate a virtual environment, then install the Python dependencies:
 
 ```bash
 python3 -m venv venv
 source venv/bin/activate
+make install
 ```
 
-The Makefile will refuse to run if no virtual environment is detected.
+Runtime dependencies are Pydantic, Pillow, and tomli. The Makefile uses Bash;
+these setup commands are intended for Linux/macOS shells.
 
----
+### Run a simulation
 
-### Quick start
+Edit `put_your_map_here.txt` with your map, then run:
 
 ```bash
-make install
 make run
 ```
 
-### how the simulation goes?
+The input filename is fixed; the program does not accept a map path as a command
+line argument. It reads display settings from `config.toml`. Paths to the map,
+configuration, fonts, and themes are relative to the project root.
 
-you provide a map file with the number of drones, hubs and connections between them and the program will display a window with a visual representation of the hubs and connections, then it will start moving the drones from the start hub to the end hub while respecting the max capacities of hubs and connections.
+The program computes and prints the complete schedule, then opens playback in a
+paused state. Press **Space** to start. At the end of playback, the display resets
+to the initial state and pauses so you can replay the simulation.
 
-the simulation is made of turns, each turn represents a unit of time in which the drones can move from one hub to another through the links, respecting the max capacities of hubs and links.
+### Controls
 
-### Control
+| Key | Action |
+| --- | --- |
+| Space | Start, pause, or resume playback |
+| Right arrow | Increase playback speed |
+| Left arrow | Decrease playback speed |
+| T | Toggle drone trails |
+| R | Reset the simulation and pause |
+| Esc or Q | Close the window |
+| Ctrl+C | Exit during setup/planning or close active playback |
 
-once the program stats and you see hubs and connections between them, you can press:
+### Makefile commands
 
-`space` to pause and resume the simulation
+| Command | Purpose |
+| --- | --- |
+| `make install` | Install runtime dependencies when the environment's stamp is missing or outdated |
+| `make re-install` | Force runtime dependency installation |
+| `make run` | Run the application after checking the dependency stamp |
+| `make debug` | Run the entry point with Python's `pdb` debugger |
+| `make clean` | Remove `__pycache__` and `.mypy_cache` directories |
+| `make dev` | Install development dependencies, including Flake8 and mypy |
+| `make lint` | Run Flake8 and mypy with the subject's required flags |
+| `make lint-strict` | Run Flake8 and mypy with `--strict` |
 
-`ESC` or `Q` to quit the simulation
+`install`, `re-install`, `run`, `debug`, and `dev` require an active virtual
+environment. Lint commands require their tools to be available on `PATH`.
+Individual targets are `lint-flake8`, `lint-mypy`, and `lint-mypy-strict`.
 
-`Right arrow` to go to speed up the simulation
+The installation stamp is stored at `$VIRTUAL_ENV/.fly-in-deps-installed`.
+Run `make install` again after creating or switching environments.
 
-`Left arrow` to go to slow down the simulation
+### Map format and example
 
----
+The first nonblank, noncomment line sets a positive drone count. Define exactly
+one start hub and one end hub. Define hubs before connections that reference
+them. Comments begin with `#`. See [Map File Syntax](docs/map_file.md) for the
+full format, metadata, and supported display colors.
 
-### Commands
+For this example, put the following in `put_your_map_here.txt`:
 
+```text
+nb_drones: 2
+start_hub: start 0 0 [color=green]
+hub: middle 1 0
+end_hub: goal 2 0 [color=yellow]
+connection: start-middle
+connection: middle-goal
+```
 
-    make install
-Installs all runtime dependencies from `requirements.txt` into the active virtual environment. Skips reinstalling if dependencies are already up to date.
+Expected terminal output:
 
-The installation stamp is stored inside that virtual environment. Switching to a new environment or recreating it requires `make install` again. Use `make re-install` to force installation.
+```text
+D1-middle
+D1-goal D2-middle
+D2-goal
+```
 
----
-    make run
-Runs the project. Will warn and exit early if dependencies haven't been installed yet — run `make install` first.
+Each line represents one turn. A drone that waits is omitted from that line.
+For travel toward a restricted zone, a drone first appears on the connection
+(e.g. `D1-start-middle`), then reaches the hub on the next turn. Delivered drones
+stop appearing in the output.
 
----
-    make debug
-Runs the project under the Python debugger (`pdb`), useful for stepping through execution.
+Unsupported single-word color names produce a warning on stderr and use the
+default dark gray color; they do not stop the simulation. The current parser
+accepts hub names containing letters, digits, and underscores, and requires
+unique hub coordinates.
 
----
-    make clean
-Removes all `__pycache__` and `.mypy_cache` directories generated during development.
+### Display configuration
 
+Edit the existing sections in [config.toml](config.toml). Colors are packed RGBA
+integers such as `0xFFFFFFFF` (opaque white), not strings beginning with `#`.
 
----
+| Section | Settings |
+| --- | --- |
+| `window` | `title`, `min_width` |
+| `appearance` | `theme` (`light` or `dark`), `background_color`, `cenimatic_bars` |
+| `drone` | `enable_trail`, `trail_opacity` (0–1), `position_randomness` (0–32 pixels) |
+| `hub` | `enable_name`, `name_color`, `enable_drone_count` |
+| `connection` | `color`, `text_color`, `stroke_color` |
+| `sizing` | `spacing`, `padding_x` (at least 25), `padding_y` (at least 50) |
+| `other` | `enable_help_tip`, `help_tip_text` |
 
-### Development
+Keep the spelling `cenimatic_bars`: this is the key used by the implementation.
+Custom themes go in `assets/themes/<theme>/` and must supply the same seven PNG
+sprites as the bundled themes. Font sheets are stored in `assets/font/`.
 
-    make dev
-Installs development dependencies from `requirements-dev.txt` (includes linting tools).
+## Visual representation
 
----
-    make lint
-Runs both `flake8` (style) and `mypy` (type checking) across the project.
+Hub sprites distinguish normal, blocked, restricted, priority, start, and end
+zones. Hub names help relate the display to the map, and occupancy labels show
+where drones accumulate. Start and end hubs are exempt from occupancy limits;
+their displayed capacity is still the configured metadata value.
 
----
-    make lint-strict
-Same as `make lint` but runs mypy in strict mode.
+Normal and priority zones take one turn to enter. Restricted zones take two
+turns, with the drone shown on the connection during transit. Blocked zones
+cannot be entered. Priority zones are preferred when arrival times are equal.
 
----
-You can also run each linter individually:
+Connections display their capacities. Colored drones, optional trails, a turn
+counter, and playback controls make routes and bottlenecks easier to follow.
+Drones disappear when delivered. Long hub names are shortened in the display.
 
-    make lint-flake8
-    make lint-mypy
-    make lint-mypy-strict
+## Algorithm choice and implementation strategy
 
+The `Graph` class builds nodes and bidirectional edges from the parsed map. It
+plans drones one at a time using a Dijkstra-style search over `(hub, turn)`
+states. A priority queue explores earlier arrival times first, then favors
+routes with more priority-zone visits when arrival times tie.
 
-*Linting commands require `flake8` and `mypy` to be installed. Run `make dev` if they are missing.*
+A transition to a normal or priority hub costs one turn. A transition to a
+restricted hub costs two turns and records an intermediate connection position.
+Blocked neighbors are skipped. Waiting is considered while existing
+reservations can affect movement; revisiting a hub already in the route is
+otherwise disallowed.
 
+After planning a drone, the algorithm reserves its hub occupancy and connection
+usage in a dictionary indexed by turn. Later drones use the remaining capacities
+to choose routes or wait. A drone departing a hub frees that space for the same
+turn. Arriving from a restricted connection frees the connection for another
+drone to enter it that turn. Start waiting and end delivery are exempt from hub
+capacity limits.
 
-### config files and map
+Routes are stored for output and animation. A fresh search is performed for each
+drone; routes are not recomputed during playback. Search cost and memory usage
+grow with the number of reachable hub/turn states, and queued candidates carry
+copies of their partial paths. This sequential reservation strategy is practical
+but does not guarantee a globally minimum completion time for every graph.
 
-#### config.toml
-<img
-src="docs/config_file.png"
-/>\
-config file: this is just a normal config.toml file at the root of this project, it configurations how the displayed window will look, more details below.
+## Resources
 
-config file syntax:
+- [3D Graph Theory](https://d3gt.com/index.html): interactive graph theory material.
+- [Dijkstra's algorithm](https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm):
+  background on priority-queue shortest-path searches.
 
-[window]
-
-    title = # window title (string)
-    min_width = # window minimum width (intiger)
-
-[appearance]
-
-    theme = # theme name, can be "dark" or "light", you can add custom themes and paste in assets/
-    background_color = # background color in hex format (#262A2F)
-    cenimatic_bars = # wether to have black bars on top and bottom of the window or not (true or false)
-
-[drone]
-
-    enable_trail = # wether to have a trail behind the drones or not (true or false)
-    position_randomness = # how much randomness to add to the drone position in pixels, 0 means no randomness. (intiger)
-
-[hub]
-
-    enable_name = # wether to display the hub name or not (true or false)
-    enable_drone_count = # wether to display the number of drones on the hub or not (true or false)
-
-[sizing]
-
-    spacing = # spacing between hubs in pixels (intiger)
-    padding_x = # padding on the left and right of the window in pixels (intiger)
-    padding_y = # padding on the top and bottom of the window in pixels (intiger)
-
-[other]
-
-    enable_help_tip = # wether to display the help tip or not (true or false)
-    help_tip_text = # text to display in the help tip (string)
-
-
----
-#### map_file
-<img
-src="docs/map_file.png"
-/>\
-map file is also at the root and it's called "put_your_map_here.txt", this is where you put the number of drones and hub names, location, color and other metadata, read docs/map_file.md for syntax and more details.
-
-# visual representation
-in this section, I will explain the main components of this project and their purpose, and their visual representation.
-
-## components
-#### hub
-<img
-src="docs/hub.png"
-width="150"
-/>\
-a hub is a place where drones can land and take off, it has a maximum capacity of drones it can hold at any given turn (time), and it can be connected to other hubs through links, each hub can have a metadata spicifying which zone type it is, the one above is a **Normal** hub.
-
----
-#### hub_blocked
-<img
-src="docs/hub_blocked.png"
-width="150"
-/>\
-drones wont be able to land on this hub at all, it's blocked area.
-
----
-#### hub_restricted
-<img
-src="docs/hub_restricted.png"
-width="150"
-/>\
-same as Normal hub but sensitive or dangerous, it costs 2 turns to go to.
-
----
-#### hub_priority
-<img
-src="docs/hub_priority.png"
-width="150"
-/>\
-same as Normal hub but will be prioritized when drones are moving, it costs 1 turn to go to.
-
-
----
-#### drone
-<img
-src="docs/drone.png"
-width="150"
-/>\
-a drone is a flying vehicle that can move between hubs, it has a unique identifier and a color (not necessarily unique).
-
----
-#### link
-<img
-src="docs/connection.png"
-width="200"
-/>\
-a link is a connection between two hubs, it has a maximum capacity of drones that can travel through it at any given time.
-
-
-# Algorithm choice and implementation strategy
-
-I used a modified dijkstra algorithm, cuz it's the most efficient when it comes to finding shortest paths in graphs.
-
-**My modification is:**\
-once a drone finds the shortest path, i update a dictionary that keeps track of what each drone reserved for each hub and each link, this i way, i get to find the shortest path overall and prevent drones from crashing into each other.
-
-# Resources
-
-| Resource                                                                     | Description                                                                              |
-| ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| [3d graph theory](https://d3gt.com/index.html)                               | A resource for understanding graph theory and its applications in 3D space.              |
-| [Dijkstra's Algorithm](https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm) | Wikipedia page explaining Dijkstra's algorithm for finding the shortest paths in graphs. |
-| Ai                                                                           | was used to write readme and docs/map_file.md, and repetitive code                       |
+AI assisted with the README, map-format documentation, repetitive code,
+Google-style docstrings, a subject-compliance review, and the unsupported-color
+warning/fallback change. Temporary checks were used to verify parser behavior,
+routing constraints, and the documented example.

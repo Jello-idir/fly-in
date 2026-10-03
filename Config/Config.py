@@ -26,14 +26,34 @@ ASSETS_LIST = [
 
 @dataclass
 class Shape:
-    """Visible PNG pixels as (x, y, RGBA) tuples and their extent."""
+    """Visible PNG pixels as (x, y, RGBA) tuples and their extent.
+
+    Attributes:
+        pixels: Visible pixels represented as (x, y, packed RGBA) tuples.
+        width: Width in pixels.
+        height: Height in pixels.
+    """
+
     pixels: set[tuple[int, int, int]]
     width: int
     height: int
 
     @classmethod
     def from_image(cls, path: str) -> "Shape":
-        """Load visible pixels and their extent from a PNG file."""
+        """Load visible pixels and their extent from a PNG file.
+
+        Args:
+            path: Path to the source PNG image.
+
+        Returns:
+            Shape: Visible pixels and bounds measured from the image
+                origin.
+
+        Raises:
+            FileNotFoundError: The sprite file does not exist.
+            ValueError: The file has no PNG signature or no visible pixels.
+            RuntimeError: Pillow cannot decode the image.
+        """
 
         try:
             with open(path, "rb") as f:
@@ -67,7 +87,18 @@ class Shape:
 
 @dataclass(frozen=True)
 class Shapes:
-    """Sprites for drones and every hub type."""
+    """Sprites for drones and every hub type.
+
+    Attributes:
+        drone: Drone sprite.
+        hub: Ordinary hub sprite.
+        hub_restricted: Restricted-zone sprite.
+        hub_priority: Priority-zone sprite.
+        hub_blocked: Blocked-zone sprite.
+        hub_start: Starting-hub sprite.
+        hub_end: Destination-hub sprite.
+    """
+
     drone: Shape
     hub: Shape
     hub_restricted: Shape
@@ -78,7 +109,19 @@ class Shapes:
 
     @classmethod
     def from_assets(cls, assets: "AssetsSection") -> "Shapes":
-        """Load all sprites from the configured asset paths."""
+        """Load all sprites from the configured asset paths.
+
+        Args:
+            assets: Paths to every required PNG sprite.
+
+        Returns:
+            Shapes: Loaded drone and hub sprites.
+
+        Raises:
+            OSError: A sprite file cannot be read.
+            ValueError: A sprite is not a PNG or has no visible pixels.
+            RuntimeError: A sprite cannot be decoded.
+        """
 
         return cls(
             drone=Shape.from_image(assets.drone),
@@ -92,19 +135,42 @@ class Shapes:
 
 
 class WindowSection(BaseModel):
-    """Window title and minimum width."""
+    """Window title and minimum width.
+
+    Attributes:
+        title: Displayed window title.
+        min_width: Minimum window width in pixels.
+    """
+
     title: str = "FLY-OUT"
     min_width: int = Field(ge=0)
 
 
 class AppearanceSection(BaseModel):
-    """Background color and cinematic-bar visibility."""
+    """Background color and cinematic-bar visibility.
+
+    Attributes:
+        background_color: Packed RGBA background color.
+        cenimatic_bars: Whether to draw top and bottom black bars.
+    """
+
     background_color: int = 0x00000080
     cenimatic_bars: bool = True
 
 
 class AssetsSection(BaseModel):
-    """PNG paths for drone and hub sprites."""
+    """PNG paths for drone and hub sprites.
+
+    Attributes:
+        drone: Path to the drone PNG sprite.
+        hub: Path to the hub PNG sprite.
+        hub_restricted: Path to the hub restricted PNG sprite.
+        hub_priority: Path to the hub priority PNG sprite.
+        hub_blocked: Path to the hub blocked PNG sprite.
+        hub_start: Path to the hub start PNG sprite.
+        hub_end: Path to the hub end PNG sprite.
+    """
+
     drone: str
     hub: str
     hub_restricted: str
@@ -115,41 +181,93 @@ class AssetsSection(BaseModel):
 
 
 class DroneSection(BaseModel):
-    """Trail visibility, opacity, and position randomness."""
+    """Trail visibility, opacity, and position randomness.
+
+    Attributes:
+        enable_trail: Whether to display drone trails.
+        trail_opacity: Trail alpha multiplier between zero and one.
+        position_randomness: Maximum random position offset in pixels, from
+            zero to 32.
+    """
+
     enable_trail: bool = True
     trail_opacity: float = Field(default=1, ge=0, le=1)
     position_randomness: int = Field(default=5, ge=0, le=32)
 
 
 class HubSection(BaseModel):
-    """Hub label colors and label/count visibility."""
+    """Hub label colors and label/count visibility.
+
+    Attributes:
+        enable_name: Whether to display hub names.
+        name_color: Packed RGBA hub-label color.
+        enable_drone_count: Whether to show hub occupancy labels.
+    """
+
     enable_name: bool = True
     name_color: int = 0xFFFFFFFF
     enable_drone_count: bool = True
 
 
 class ConnectionSection(BaseModel):
-    """Connection fill, outline, and capacity-label colors."""
+    """Connection fill, outline, and capacity-label colors.
+
+    Attributes:
+        color: Packed RGBA color or special rainbow marker.
+        text_color: Packed RGBA capacity-label color.
+        stroke_color: Packed RGBA connection-outline color.
+    """
+
     color: int = 0xFFFFFF50
     text_color: int = 0xFFFFFFFF
     stroke_color: int = 0xFFFFFFFF
 
 
 class SizingSection(BaseModel):
-    """Grid spacing and minimum window padding."""
+    """Grid spacing and minimum window padding.
+
+    Attributes:
+        spacing: Gap between grid cells in pixels.
+        padding_x: Horizontal window padding in pixels, at least 25.
+        padding_y: Vertical window padding in pixels, at least 50.
+    """
+
     spacing: int = Field(ge=0)
     padding_x: int = Field(ge=PADDING_X_DEFAULT)
     padding_y: int = Field(ge=PADDING_Y_DEFAULT)
 
 
 class OtherSection(BaseModel):
-    """Help-tip text and visibility."""
+    """Help-tip text and visibility.
+
+    Attributes:
+        enable_help_tip: Whether to display the help text.
+        help_tip_text: Text displayed near the bottom of the window.
+    """
+
     enable_help_tip: bool = True
     help_tip_text: str = ""
 
 
 class Config(BaseModel):
-    """Validated display settings, map dimensions, fonts, and sprites."""
+    """Validated display settings, map dimensions, fonts, and sprites.
+
+    Attributes:
+        window: Window title and minimum size settings.
+        appearance: Background and cinematic-bar settings.
+        drone: Drone trail and position settings.
+        hub: Hub label and occupancy-display settings.
+        connection: Connection colors and outline settings.
+        sizing: Grid spacing and padding settings.
+        other: Help-tip settings.
+        window_size: Computed window width and height in pixels.
+        paddin: Computed horizontal and vertical padding in pixels.
+        cell: Square grid-cell size in pixels.
+        space: Gap between grid cells in pixels.
+        font: Pixel glyphs indexed by character.
+        shapes: Loaded sprite collection.
+    """
+
     # from config file — nested, same shape as AppConfig
     window: WindowSection
     appearance: AppearanceSection
@@ -173,7 +291,23 @@ class Config(BaseModel):
     def from_mapdata(
         cls, mapdata: MapData, config_path: str = "config.toml"
     ) -> 'Config':
-        """Load TOML settings and assets, then size the window for the map."""
+        """Load TOML settings and assets, then size the window for the map.
+
+        Args:
+            mapdata: Validated map containing hubs, connections, and
+                drones.
+            config_path: Path to the TOML display configuration.
+
+        Returns:
+            Config: Validated settings with computed dimensions and loaded
+                assets.
+
+        Raises:
+            OSError: A configuration, sprite, or font file cannot be read.
+            ValueError: TOML, settings, or image data are invalid.
+            KeyError: A required configuration section is missing.
+            RuntimeError: A sprite cannot be decoded.
+        """
         with open(config_path, "rb") as f:
             # load toml as dict
             cfg = tomli.load(f)
